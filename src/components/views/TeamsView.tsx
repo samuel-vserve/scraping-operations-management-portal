@@ -23,9 +23,14 @@ import {
 } from 'lucide-react';
 import { Team, Employee } from '../../types';
 
-export const TeamsView: React.FC = () => {
+interface TeamsViewProps {
+  defaultTab?: 'teams' | 'members';
+}
+
+export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) => {
   const { teams, employees, tasks, updateUserTeam } = useApp();
 
+  const [activeTab, setActiveTab] = useState<'teams' | 'members'>(defaultTab);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'scraping' | 'production'>('all');
@@ -84,18 +89,48 @@ export const TeamsView: React.FC = () => {
           </div>
         </div>
 
-        {selectedTeam && (
-          <button
-            onClick={() => setSelectedTeam(null)}
-            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            ← View All Teams
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center p-1 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs font-semibold">
+            <button
+              onClick={() => {
+                setActiveTab('teams');
+                setSelectedTeam(null);
+              }}
+              className={`px-3 py-1 rounded-md transition-colors ${
+                activeTab === 'teams'
+                  ? 'bg-card text-slate-900 dark:text-zinc-100 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              Teams & Pods
+            </button>
+            <button
+              onClick={() => setActiveTab('members')}
+              className={`px-3 py-1 rounded-md transition-colors ${
+                activeTab === 'members'
+                  ? 'bg-card text-slate-900 dark:text-zinc-100 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              Team Members ({employees.length})
+            </button>
+          </div>
+
+          {selectedTeam && (
+            <button
+              onClick={() => setSelectedTeam(null)}
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline ml-2"
+            >
+              ← View All Teams
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* SECTION 1: THE CORE SCRAPING ENGINEERING POD (1 DEDICATED TEAM) */}
-      <div className="space-y-3">
+      {activeTab === 'teams' && (
+        <>
+          {/* SECTION 1: THE CORE SCRAPING ENGINEERING POD (1 DEDICATED TEAM) */}
+          <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600">
@@ -274,6 +309,8 @@ export const TeamsView: React.FC = () => {
           })}
         </div>
       </div>
+    </>
+  )}
 
       {/* SECTION 3: EMPLOYEE DIRECTORY & TEAM ASSIGNMENT */}
       <div className="p-6 rounded-2xl border border-border bg-card shadow-subtle space-y-5">

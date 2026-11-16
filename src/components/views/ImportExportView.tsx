@@ -17,10 +17,14 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export const ImportExportView: React.FC = () => {
+interface ImportExportViewProps {
+  initialTab?: 'import' | 'export';
+}
+
+export const ImportExportView: React.FC<ImportExportViewProps> = ({ initialTab = 'import' }) => {
   const { importExportLogs, importNewDataset, tasks } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'import' | 'export'>('import');
+  const [activeTab, setActiveTab] = useState<'import' | 'export'>(initialTab);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [importStep, setImportStep] = useState<number>(0); // 0=idle, 1=upload, 2=preview, 3=mapping, 4=validation, 5=import, 6=drive
   const [isProcessing, setIsProcessing] = useState<boolean>(false);

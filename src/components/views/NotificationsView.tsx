@@ -15,7 +15,11 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-export const NotificationsView: React.FC = () => {
+interface NotificationsViewProps {
+  initialTab?: 'notifications' | 'emails';
+}
+
+export const NotificationsView: React.FC<NotificationsViewProps> = ({ initialTab = 'notifications' }) => {
   const {
     notifications,
     emailLogs,
@@ -25,7 +29,7 @@ export const NotificationsView: React.FC = () => {
     setCurrentView,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'notifications' | 'emails'>('notifications');
+  const [activeTab, setActiveTab] = useState<'notifications' | 'emails'>(initialTab);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchEmail, setSearchEmail] = useState<string>('');
 

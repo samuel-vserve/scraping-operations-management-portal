@@ -22,7 +22,11 @@ import { StatusBadge } from '../common/StatusBadge';
 import { PriorityBadge } from '../common/PriorityBadge';
 import confetti from 'canvas-confetti';
 
-export const ManagerQCView: React.FC = () => {
+interface ManagerQCViewProps {
+  mode?: 'all' | 'rework';
+}
+
+export const ManagerQCView: React.FC<ManagerQCViewProps> = ({ mode = 'all' }) => {
   const {
     tasks,
     selectedTaskIdForQC,
@@ -34,11 +38,12 @@ export const ManagerQCView: React.FC = () => {
     setCurrentView,
   } = useApp();
 
-  // Find active task or default to first awaiting QC
+  // Find active task or default to first awaiting QC or rework
   const currentTask =
     tasks.find((t) => t.id === selectedTaskIdForQC) ||
-    tasks.find((t) => t.status === 'awaiting_manager_qc') ||
-    tasks[0];
+    (mode === 'rework'
+      ? tasks.find((t) => t.status === 'rework_required') || tasks[0]
+      : tasks.find((t) => t.status === 'awaiting_manager_qc') || tasks[0]);
 
   const [remarks, setRemarks] = useState<string>('');
   const [filterMissingField, setFilterMissingField] = useState<string | null>(null);
@@ -104,10 +109,14 @@ export const ManagerQCView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                Manager Approval Workspace
+                {mode === 'rework' ? 'Rework Queue & Correction Workspace' : 'Manager Approval Workspace'}
               </h1>
-              <span className="font-mono text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                {currentTask.id}
+              <span className={`font-mono text-xs px-2 py-0.5 rounded border ${
+                mode === 'rework'
+                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                  : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800'
+              }`}>
+                {mode === 'rework' ? 'Rework Active' : currentTask.id}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400">

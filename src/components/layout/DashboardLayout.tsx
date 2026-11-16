@@ -16,6 +16,13 @@ import { NotificationsView } from '../views/NotificationsView';
 import { ProjectsView } from '../views/ProjectsView';
 import { SettingsView } from '../views/SettingsView';
 import { AllTasksView } from '../views/AllTasksView';
+import { PerformanceAnalyticsView } from '../views/PerformanceAnalyticsView';
+import { TeamReportsView } from '../views/TeamReportsView';
+import { EmployeeReportsView } from '../views/EmployeeReportsView';
+import { ActivityLogsView } from '../views/ActivityLogsView';
+import { EmailHistoryView } from '../views/EmailHistoryView';
+import { GDriveView } from '../views/GDriveView';
+import { UserManagementView } from '../views/UserManagementView';
 
 export const DashboardLayout: React.FC = () => {
   const { currentView } = useApp();
@@ -23,42 +30,53 @@ export const DashboardLayout: React.FC = () => {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'overview':
-      case 'performance':
-      case 'team-reports':
         return <ManagerDashboardView />;
       case 'all-tasks':
         return <AllTasksView />;
       case 'my-tasks':
         return <MyTasksScraperView />;
+      case 'projects':
+        return <ProjectsView />;
+      case 'teams':
+        return <TeamsView defaultTab="teams" />;
+      case 'team-members':
+        return <TeamsView defaultTab="members" />;
+      case 'guest-portal':
+        return <GuestPortalView />;
       case 'manager-qc':
       case 'manager-approval':
+        return <ManagerQCView mode="all" />;
       case 'rework-queue':
-        return <ManagerQCView />;
-      case 'analytics':
-      case 'dataset-explorer':
-        return <AnalyticsView />;
+        return <ManagerQCView mode="rework" />;
       case 'production-qc':
       case 'production-deliverables':
         return <ProductionQCView />;
-      case 'teams':
-      case 'team-members':
-      case 'employee-reports':
-      case 'user-management':
-        return <TeamsView />;
+      case 'analytics':
+        return <AnalyticsView mode="analytics" />;
+      case 'dataset-explorer':
+        return <AnalyticsView mode="explorer" />;
       case 'import-export':
+        return <ImportExportView initialTab="import" />;
       case 'export-center':
+        return <ImportExportView initialTab="export" />;
       case 'gdrive':
-        return <ImportExportView />;
-      case 'guest-portal':
-        return <GuestPortalView />;
-      case 'notifications':
-      case 'email-history':
+        return <GDriveView />;
+      case 'performance':
+        return <PerformanceAnalyticsView />;
+      case 'team-reports':
+        return <TeamReportsView />;
+      case 'employee-reports':
+        return <EmployeeReportsView />;
       case 'activity-logs':
-        return <NotificationsView />;
-      case 'projects':
-        return <ProjectsView />;
+        return <ActivityLogsView />;
+      case 'notifications':
+        return <NotificationsView initialTab="notifications" />;
+      case 'email-history':
+        return <EmailHistoryView />;
       case 'settings':
         return <SettingsView />;
+      case 'user-management':
+        return <UserManagementView />;
       default:
         return <ManagerDashboardView />;
     }
