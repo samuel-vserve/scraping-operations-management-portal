@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 export const ProjectsView: React.FC = () => {
-  const { projects, tasks, setCurrentView } = useApp();
+  const { projects, tasks, setCurrentView, setInspectedProjectId } = useApp();
   const [search, setSearch] = useState('');
 
   const filteredProjects = projects.filter(
@@ -60,7 +60,8 @@ export const ProjectsView: React.FC = () => {
           return (
             <div
               key={proj.id}
-              className="p-5 rounded-2xl border border-border bg-card shadow-subtle hover:border-slate-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between space-y-4"
+              onClick={() => setInspectedProjectId(proj.id)}
+              className="p-5 rounded-2xl border border-border bg-card shadow-subtle hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between space-y-4 group"
             >
               <div>
                 <div className="flex items-start justify-between gap-2">
@@ -127,6 +128,11 @@ export const ProjectsView: React.FC = () => {
                     className="h-full rounded-full bg-indigo-600"
                     style={{ width: `${percent}%` }}
                   />
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold group-hover:underline">
+                  <span>View Worked User History & Dossier</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>

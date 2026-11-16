@@ -51,6 +51,7 @@ export const ManagerDashboardView: React.FC = () => {
     projects,
     setCurrentView,
     setSelectedTaskIdForQC,
+    setInspectedTaskId,
     setIsCreateTaskModalOpen,
     bulkUpdateStatus,
     bulkAssignTasks,
@@ -719,11 +720,12 @@ export const ManagerDashboardView: React.FC = () => {
                   return (
                     <tr
                       key={task.id}
-                      className={`hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 transition-colors ${
+                      onClick={() => setInspectedTaskId(task.id)}
+                      className={`hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer ${
                         isSelected ? 'bg-indigo-50/20 dark:bg-indigo-950/20' : ''
                       }`}
                     >
-                      <td className="p-3">
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -792,7 +794,7 @@ export const ManagerDashboardView: React.FC = () => {
                         {task.deadline}
                       </td>
 
-                      <td className="p-3 text-right">
+                      <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => {

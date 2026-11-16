@@ -97,40 +97,47 @@ export const Topbar: React.FC = () => {
     {
       id: 'manager',
       name: 'Samuel P',
-      title: 'Operations Manager',
+      title: 'Operational Manager (Super Admin)',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
     },
     {
-      id: 'production',
+      id: 'production_lead',
       name: 'Priya Nair',
-      title: 'Production Lead (Lawson Pod)',
+      title: 'Production Lead (Multi-Team)',
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&auto=format&fit=crop&q=80',
+    },
+    {
+      id: 'production_user',
+      name: 'Divya Murugan',
+      title: 'Production User (Task Owner & QC)',
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80',
     },
     {
       id: 'scraper',
       name: 'Karthik R',
-      title: 'Senior Scraping Engineer (Core Pod)',
+      title: 'Scraping User (Extraction Pod)',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
     },
     {
       id: 'guest',
       name: 'Mark Stevens',
-      title: 'Guest Client (Lawson Partner)',
+      title: 'Guest User (Requestor Only)',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
     },
   ];
 
   const currentProfile =
-    rolesList.find((r) => r.id === currentUserRole) || rolesList[0];
+    rolesList.find((r) => r.id === currentUserRole) ||
+    (currentUserRole === 'production' ? rolesList[1] : rolesList[0]);
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-6 bg-card/90 backdrop-blur-md border-b border-border select-none">
-      {/* Left: Breadcrumbs & Workspace Badge */}
+      {/* Left: Breadcrumbs */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-zinc-400">
           <span className="flex items-center gap-1 font-semibold text-slate-800 dark:text-zinc-200">
             <Layers className="w-3.5 h-3.5 text-indigo-600" />
-            {currentWorkspace}
+            Vserve Scraping Ops
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-slate-900 dark:text-zinc-100 font-semibold">
@@ -316,6 +323,12 @@ export const Topbar: React.FC = () => {
                       setIsProfileOpen(false);
                       if (r.id === 'guest') {
                         setCurrentView('guest-portal');
+                      } else if (r.id === 'production_user') {
+                        setCurrentView('all-tasks');
+                      } else if (r.id === 'scraper') {
+                        setCurrentView('my-tasks');
+                      } else if (r.id === 'manager' || r.id === 'production_lead') {
+                        setCurrentView('overview');
                       }
                     }}
                     className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors text-xs ${

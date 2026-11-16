@@ -27,25 +27,43 @@ import confetti from 'canvas-confetti';
 export const ProductionQCView: React.FC = () => {
   const {
     tasks,
+    currentUserRole,
     approveProduction,
     rejectProduction,
     downloadScrapedFile,
     setIsCreateTaskModalOpen,
     setCurrentView,
     setSelectedTaskIdForQC,
+    setInspectedTaskId,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'awaiting' | 'in_validation' | 'approved' | 'rejected' | 'completed'>('awaiting');
   const [selectedTaskForAction, setSelectedTaskForAction] = useState<string | null>(null);
   const [productionRemarks, setProductionRemarks] = useState<string>('');
-  const [statsModalTask, setStatsModalTask] = useState<Task | null>(null);
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('all');
+
+  // Filter tasks based on role and team
+  const scopedTasks = tasks.filter((t) => {
+    if (currentUserRole === 'production_user') {
+      const isMine =
+        t.productionUser === 'Divya Murugan' ||
+        t.createdBy === 'Divya Murugan' ||
+        t.id === 'TSK-1048' ||
+        t.id === 'TSK-1049';
+      if (!isMine) return false;
+    }
+    if (selectedTeamFilter !== 'all' && t.productionTeam !== selectedTeamFilter) {
+      return false;
+    }
+    return true;
+  });
 
   // Map tasks to tabs
-  const awaitingTasks = tasks.filter((t) => t.status === 'production_pending');
-  const inValidationTasks = tasks.filter((t) => t.status === 'in_progress' && t.progress > 75);
-  const approvedTasks = tasks.filter((t) => t.status === 'completed');
-  const rejectedTasks = tasks.filter((t) => t.status === 'rejected' || t.status === 'rework_required');
-  const allCompleted = tasks.filter((t) => t.status === 'completed');
+  const awaitingTasks = scopedTasks.filter((t) => t.status === 'production_pending');
+  const inValidationTasks = scopedTasks.filter((t) => t.status === 'in_progress' && t.progress > 75);
+  const approvedTasks = scopedTasks.filter((t) => t.status === 'completed');
+  const rejectedTasks = scopedTasks.filter((t) => t.status === 'rejected' || t.status === 'rework_required');
+  const allCompleted = scopedTasks.filter((t) => t.status === 'completed');
 
   const getTabTasks = () => {
     switch (activeTab) {
@@ -73,14 +91,12 @@ export const ProductionQCView: React.FC = () => {
     }
     setSelectedTaskForAction(null);
     setProductionRemarks('');
-    setStatsModalTask(null);
   };
 
   const handleReject = (taskId: string) => {
     rejectProduction(taskId, productionRemarks || 'Production QA flagged broken image URLs. Returned to rework queue.');
     setSelectedTaskForAction(null);
     setProductionRemarks('');
-    setStatsModalTask(null);
   };
 
   return (
@@ -102,6 +118,20 @@ export const ProductionQCView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
+          {currentUserRole !== 'production_user' && (
+            <select
+              value={selectedTeamFilter}
+              onChange={(e) => setSelectedTeamFilter(e.target.value)}
+              className="text-xs font-semibold px-2.5 py-2 rounded-lg border border-border bg-card text-slate-700 dark:text-zinc-300"
+            >
+              <option value="all">All Production Teams</option>
+              <option value="Lawson Production Team">Lawson Production Team</option>
+              <option value="Surya Production Team">Surya Production Team</option>
+              <option value="DTS Automation Team">DTS Automation Team</option>
+              <option value="Altius Enterprise Team">Altius Enterprise Team</option>
+            </select>
+          )}
+
           <button
             onClick={() => setIsCreateTaskModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-all"
@@ -109,10 +139,6 @@ export const ProductionQCView: React.FC = () => {
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Request Scraping Task</span>
           </button>
-
-          <span className="text-xs font-mono text-purple-600 bg-purple-50 dark:bg-purple-950/50 px-2.5 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800">
-            Lead: Priya Nair (Production Lead)
-          </span>
         </div>
       </div>
 
@@ -231,11 +257,11 @@ export const ProductionQCView: React.FC = () => {
 
                   {/* View Scraped Data Stats Button */}
                   <button
-                    onClick={() => setStatsModalTask(task)}
+                    onClick={() => setInspectedTaskId(task.id)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-200 transition-colors shadow-subtle"
                   >
                     <BarChart3 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                    <span>View Scraped Data Stats</span>
+                    <span>View Scraped Data Analytics & Records</span>
                   </button>
 
                   <button
@@ -317,114 +343,6 @@ export const ProductionQCView: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* STATS MODAL: "See Stats of Scraped Data" */}
-      {statsModalTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <span className="font-mono text-xs font-bold text-indigo-600">
-                  {statsModalTask.id} • Quality & Schema Diagnostics
-                </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                  {statsModalTask.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setStatsModalTask(null)}
-                className="p-1 rounded text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* 4 Diagnostic Metrics */}
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-border">
-                <span className="text-[10px] text-slate-400 block">Total Scraped SKUs</span>
-                <span className="font-mono text-base font-bold text-slate-900 dark:text-zinc-100">
-                  {statsModalTask.skuCount.toLocaleString()}
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-                <span className="text-[10px] text-emerald-700 dark:text-emerald-300 block">Exact Matches</span>
-                <span className="font-mono text-base font-bold text-emerald-600">
-                  99.4%
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
-                <span className="text-[10px] text-amber-700 dark:text-amber-300 block">Missing Values</span>
-                <span className="font-mono text-base font-bold text-amber-600">
-                  18 Rows (0.6%)
-                </span>
-              </div>
-              <div className="p-3 rounded-xl bg-purple-50/50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
-                <span className="text-[10px] text-purple-700 dark:text-purple-300 block">Duplicates</span>
-                <span className="font-mono text-base font-bold text-purple-600">
-                  4 Records
-                </span>
-              </div>
-            </div>
-
-            {/* Attribute Fill Rate Breakdown */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-wider">
-                Attribute Fill Rates & Schema Verification
-              </h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                {[
-                  { label: 'SKU ID', fill: 100 },
-                  { label: 'Product URL', fill: 100 },
-                  { label: 'Manufacturer Part No (MPN)', fill: 99.8 },
-                  { label: 'Product Title', fill: 100 },
-                  { label: 'Taxonomy Category', fill: 98.8 },
-                  { label: 'High-Res Images (CDN Verified)', fill: 96.5 },
-                  { label: 'Specification Table JSON', fill: 94.2 },
-                  { label: 'Technical Cut Sheet PDF', fill: 82.5 },
-                ].map((attr) => (
-                  <div key={attr.label} className="p-2 rounded-lg bg-slate-50 dark:bg-zinc-900/60 border border-border">
-                    <div className="flex justify-between text-[11px] mb-1">
-                      <span className="text-slate-600 dark:text-zinc-300 font-medium truncate">{attr.label}</span>
-                      <span className="font-mono font-bold text-emerald-600">{attr.fill}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden">
-                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${attr.fill}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-border">
-              <button
-                onClick={() => downloadScrapedFile(statsModalTask.id)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-border bg-slate-100 dark:bg-zinc-800 text-xs font-semibold hover:bg-slate-200"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download Scraped File (.xlsx)</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleReject(statsModalTask.id)}
-                  className="px-3.5 py-1.5 rounded-lg border border-rose-300 text-rose-600 text-xs font-semibold hover:bg-rose-50"
-                >
-                  Request Rework
-                </button>
-                <button
-                  onClick={() => handleApprove(statsModalTask.id)}
-                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Certify & Upload to Drive</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

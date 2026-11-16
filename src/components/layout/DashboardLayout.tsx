@@ -4,6 +4,8 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { TaskAssignmentModal } from '../views/TaskAssignmentModal';
+import { TaskDetailModal } from '../common/TaskDetailModal';
+import { ProjectDetailModal } from '../common/ProjectDetailModal';
 import { ManagerDashboardView } from '../views/ManagerDashboardView';
 import { MyTasksScraperView } from '../views/MyTasksScraperView';
 import { ManagerQCView } from '../views/ManagerQCView';
@@ -25,7 +27,13 @@ import { GDriveView } from '../views/GDriveView';
 import { UserManagementView } from '../views/UserManagementView';
 
 export const DashboardLayout: React.FC = () => {
-  const { currentView } = useApp();
+  const {
+    currentView,
+    inspectedTaskId,
+    setInspectedTaskId,
+    inspectedProjectId,
+    setInspectedProjectId,
+  } = useApp();
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -105,6 +113,22 @@ export const DashboardLayout: React.FC = () => {
 
       {/* 4-Step Task Assignment Wizard Modal */}
       <TaskAssignmentModal />
+
+      {/* Task Analytics & Data Completeness Inspector Modal */}
+      {inspectedTaskId && (
+        <TaskDetailModal
+          taskId={inspectedTaskId}
+          onClose={() => setInspectedTaskId(null)}
+        />
+      )}
+
+      {/* Project History & Worked User Dossier Modal */}
+      {inspectedProjectId && (
+        <ProjectDetailModal
+          projectId={inspectedProjectId}
+          onClose={() => setInspectedProjectId(null)}
+        />
+      )}
     </div>
   );
 };

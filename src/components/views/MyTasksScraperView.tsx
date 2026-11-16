@@ -18,6 +18,7 @@ import {
   Sliders,
   Check,
   Zap,
+  Database,
 } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 import { PriorityBadge } from '../common/PriorityBadge';
@@ -35,6 +36,7 @@ export const MyTasksScraperView: React.FC = () => {
     employees,
     setCurrentView,
     setSelectedTaskIdForQC,
+    setInspectedTaskId,
   } = useApp();
 
   // Engineer tasks (assigned to Karthik R or active scraping tasks)
@@ -324,6 +326,16 @@ export const MyTasksScraperView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* Inspect Data Analytics Modal Trigger */}
+                    <button
+                      onClick={() => setInspectedTaskId(task.id)}
+                      className="px-3 py-2 rounded-lg border border-border bg-slate-50 dark:bg-zinc-800/80 hover:bg-slate-100 dark:hover:bg-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors shadow-subtle"
+                      title="Inspect SKU Analytics, Completeness and Records"
+                    >
+                      <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>Data Analytics</span>
+                    </button>
+
                     {/* Reassign to Peer Scraper Button */}
                     <button
                       onClick={() => {

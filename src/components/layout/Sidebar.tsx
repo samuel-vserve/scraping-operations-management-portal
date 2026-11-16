@@ -35,21 +35,11 @@ export const Sidebar: React.FC = () => {
     currentView,
     setCurrentView,
     currentUserRole,
-    currentWorkspace,
-    setCurrentWorkspace,
     notifications,
     tasks,
   } = useApp();
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState<boolean>(false);
-
-  const workspaces = [
-    'Lawson Industrial',
-    'E-Commerce Enterprise',
-    'Grainger & Zoro Catalog',
-    'Global Scrapers Hub',
-  ];
 
   // Counts for badges
   const awaitingQCCount = tasks.filter((t) => t.status === 'awaiting_manager_qc').length;
@@ -72,15 +62,21 @@ export const Sidebar: React.FC = () => {
 
   const sections: NavSection[] = [
     {
-      title: 'WORKSPACE',
+      title: 'OPERATIONS',
       items: [
-        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard, roles: ['manager', 'production_lead', 'production'] },
         { id: 'my-tasks', label: 'My Tasks', icon: CheckSquare, badge: 3, roles: ['scraper'] },
-        { id: 'all-tasks', label: 'All Tasks', icon: ListTodo, badge: tasks.length },
-        { id: 'projects', label: 'Projects', icon: FolderKanban },
-        { id: 'teams', label: 'Teams & Pods', icon: Users, roles: ['manager', 'production'] },
-        { id: 'team-members', label: 'Team Members', icon: UserCheck, roles: ['manager', 'production'] },
-        { id: 'guest-portal', label: 'Guest Users', icon: UserPlus },
+        {
+          id: 'all-tasks',
+          label: currentUserRole === 'production_user' ? 'My Created Tasks' : 'All Tasks',
+          icon: ListTodo,
+          badge: tasks.length,
+          roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'],
+        },
+        { id: 'projects', label: 'Projects', icon: FolderKanban, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'teams', label: 'Teams & Pods', icon: Users, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'team-members', label: 'Team Members', icon: UserCheck, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'guest-portal', label: 'Guest Portal', icon: UserPlus, roles: ['guest'] },
       ],
     },
     {
@@ -98,7 +94,7 @@ export const Sidebar: React.FC = () => {
           id: 'production-qc',
           label: 'Production Deliverables',
           icon: Factory,
-          roles: ['manager', 'production'],
+          roles: ['manager', 'production_lead', 'production_user', 'production'],
         },
         {
           id: 'rework-queue',
@@ -106,32 +102,17 @@ export const Sidebar: React.FC = () => {
           icon: RefreshCw,
           badge: reworkCount > 0 ? reworkCount : undefined,
           badgeColor: 'bg-amber-500 text-white',
-          roles: ['manager', 'production', 'scraper'],
+          roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'],
         },
-        {
-          id: 'analytics',
-          label: 'Data Analytics',
-          icon: BarChart3,
-          roles: ['manager', 'production', 'scraper'],
-        },
-      ],
-    },
-    {
-      title: 'DATA MANAGEMENT',
-      items: [
-        { id: 'import-export', label: 'Import Center', icon: UploadCloud, roles: ['manager', 'production'] },
-        { id: 'export-center', label: 'Export Center', icon: DownloadCloud, roles: ['manager', 'production'] },
-        { id: 'dataset-explorer', label: 'Dataset Explorer', icon: Database },
-        { id: 'gdrive', label: 'Google Drive Files', icon: Cloud, roles: ['manager', 'production'] },
       ],
     },
     {
       title: 'REPORTS',
       items: [
-        { id: 'performance', label: 'Performance Analytics', icon: LineChart, roles: ['manager'] },
-        { id: 'team-reports', label: 'Team Reports', icon: FileSpreadsheet, roles: ['manager'] },
+        { id: 'performance', label: 'Performance Analytics', icon: LineChart, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'team-reports', label: 'Team Reports', icon: FileSpreadsheet, roles: ['manager', 'production_lead', 'production'] },
         { id: 'employee-reports', label: 'Employee Reports', icon: FileText, roles: ['manager'] },
-        { id: 'activity-logs', label: 'Activity Logs', icon: Activity },
+        { id: 'activity-logs', label: 'Activity Logs', icon: Activity, roles: ['manager', 'production_lead', 'production'] },
       ],
     },
     {
@@ -143,9 +124,10 @@ export const Sidebar: React.FC = () => {
           icon: Bell,
           badge: unreadNotifCount > 0 ? unreadNotifCount : undefined,
           badgeColor: 'bg-rose-500 text-white',
+          roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper', 'guest'],
         },
         { id: 'email-history', label: 'Email History', icon: Mail, roles: ['manager'] },
-        { id: 'settings', label: 'Settings', icon: Settings },
+        { id: 'settings', label: 'Settings', icon: Settings, roles: ['manager', 'production_lead', 'production', 'scraper'] },
         { id: 'user-management', label: 'User Management', icon: UserCheck, roles: ['manager'] },
       ],
     },
@@ -188,49 +170,8 @@ export const Sidebar: React.FC = () => {
         </button>
       </div>
 
-      {/* Workspace Selector */}
-      {!isCollapsed && (
-        <div className="px-3 pt-3 pb-1 relative">
-          <button
-            onClick={() => setIsWorkspaceOpen(!isWorkspaceOpen)}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-border bg-slate-50/70 dark:bg-zinc-900/60 hover:bg-slate-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium text-slate-700 dark:text-zinc-300"
-          >
-            <div className="flex items-center gap-2 truncate">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="truncate">{currentWorkspace}</span>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          </button>
-
-          {isWorkspaceOpen && (
-            <div className="absolute top-12 left-3 right-3 z-50 rounded-lg border border-border bg-card shadow-lg py-1 animate-fade-in">
-              <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
-                Switch Workspace
-              </div>
-              {workspaces.map((ws) => (
-                <button
-                  key={ws}
-                  onClick={() => {
-                    setCurrentWorkspace(ws);
-                    setIsWorkspaceOpen(false);
-                  }}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors ${
-                    ws === currentWorkspace
-                      ? 'text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50/50 dark:bg-indigo-950/30'
-                      : 'text-slate-700 dark:text-zinc-300'
-                  }`}
-                >
-                  <span className="truncate">{ws}</span>
-                  {ws === currentWorkspace && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Navigation Sections */}
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
         {isGuest ? (
           <div className="space-y-1">
             <div className="px-2 py-1 text-[11px] font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">

@@ -9,7 +9,13 @@ export type TaskStatus =
   | 'completed'
   | 'rejected';
 
-export type UserRole = 'manager' | 'production' | 'scraper' | 'guest';
+export type UserRole =
+  | 'manager'
+  | 'production_lead'
+  | 'production_user'
+  | 'production'
+  | 'scraper'
+  | 'guest';
 
 export interface QCHistoryEntry {
   id: string;
@@ -42,6 +48,10 @@ export interface Task {
   primaryAssignee: string;
   productionTeam?: string;
   productionUser?: string;
+  createdBy?: string;
+  createdByRole?: string;
+  gdriveFolderUrl?: string;
+  gdriveFileUrl?: string;
   internalExecutionState?: string;
   skuCount: number;
   completedSkus: number;
@@ -90,6 +100,23 @@ export interface Team {
   websitesManaged: string[];
 }
 
+export interface ProjectContributor {
+  name: string;
+  avatar: string;
+  role: string;
+  team: string;
+  tasksCompleted: number;
+  skusDelivered: number;
+}
+
+export interface ProjectHistoryEvent {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  type: 'milestone' | 'qc' | 'assignment' | 'delivery';
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -102,6 +129,10 @@ export interface Project {
   teamLead: string;
   deadline: string;
   health: 'healthy' | 'at_risk' | 'delayed';
+  contributors?: ProjectContributor[];
+  history?: ProjectHistoryEvent[];
+  gdriveUrl?: string;
+  description?: string;
 }
 
 export interface ScrapedRecord {

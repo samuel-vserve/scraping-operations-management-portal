@@ -16,7 +16,7 @@ import { StatusBadge } from '../common/StatusBadge';
 import confetti from 'canvas-confetti';
 
 export const GuestPortalView: React.FC = () => {
-  const { tasks } = useApp();
+  const { tasks, setIsCreateTaskModalOpen } = useApp();
 
   // Guest client tasks (e.g. for Lawson partner / Industrial Supplies)
   const clientTasks = tasks.filter((t) => t.client.toLowerCase().includes('supplies') || t.client.toLowerCase().includes('commercial') || t.client.toLowerCase().includes('precision'));
@@ -47,13 +47,17 @@ export const GuestPortalView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-zinc-400">
-            Welcome, Mark Stevens (Industrial Supplies Partner). Review your contracted scraping pipelines, download input feeds, and submit deliverables.
+            Welcome, Mark Stevens (Guest Requestor). Submit new scraping requests with seed files and track the live execution status.
           </p>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-border text-xs font-mono">
-          <span className="text-slate-400">Target SLA: </span>
-          <span className="text-emerald-600 font-bold">99.8% Schema Compliance</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsCreateTaskModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-all"
+          >
+            <span>+ Request New Scraping Task</span>
+          </button>
         </div>
       </div>
 

@@ -38,6 +38,10 @@ interface AppContextType {
   // Quick Task Creation / QC Selection
   selectedTaskIdForQC: string | null;
   setSelectedTaskIdForQC: (taskId: string | null) => void;
+  inspectedTaskId: string | null;
+  setInspectedTaskId: (taskId: string | null) => void;
+  inspectedProjectId: string | null;
+  setInspectedProjectId: (projectId: string | null) => void;
   isCreateTaskModalOpen: boolean;
   setIsCreateTaskModalOpen: (open: boolean) => void;
   isCommandPaletteOpen: boolean;
@@ -56,6 +60,7 @@ interface AppContextType {
   // Operational Actions
   approveManagerQC: (taskId: string, remarks: string) => void;
   requestReworkQC: (taskId: string, remarks: string, failingMetrics?: string[]) => void;
+  reScrapingRequest: (taskId: string, remarks: string, failingMetrics?: string[]) => void;
   rejectQC: (taskId: string, remarks: string) => void;
   approveProduction: (taskId: string, remarks: string) => void;
   rejectProduction: (taskId: string, remarks: string) => void;
@@ -94,6 +99,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [selectedTaskIdForQC, setSelectedTaskIdForQC] = useState<string | null>('TSK-1048');
+  const [inspectedTaskId, setInspectedTaskId] = useState<string | null>(null);
+  const [inspectedProjectId, setInspectedProjectId] = useState<string | null>(null);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
   const [defaultScrapingAssignee, setDefaultScrapingAssignee] = useState<string>('Karthik R');
@@ -365,6 +372,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'delivered',
       sentAt: new Date().toLocaleTimeString(),
       deliveryTime: '0.9s',
+    };
+    setEmailLogs((prev) => [newEmail, ...prev]);
+  };
+
+  const reScrapingRequest = (taskId: string, remarks: string, failingMetrics?: string[]) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        const newEntry: QCHistoryEntry = {
+          id: `qc-${Date.now()}`,
+          action: 'rework_requested',
+          performedBy: currentUserRole === 'production_user' ? 'Divya Murugan' : 'Priya Nair',
+          role: currentUserRole === 'production_user' ? 'Production User' : 'Production Lead',
+          timestamp: new Date().toLocaleString(),
+          remarks: remarks || 'Re-scraping requested: missing required fields or data validation failure.',
+          failingMetrics: failingMetrics || ['Missing specifications', 'Schema drift'],
+        };
+        return {
+          ...t,
+          status: 'rework_required',
+          qcHistory: [newEntry, ...t.qcHistory],
+        };
+      })
+    );
+
+    const newNotif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      title: `Re-Scraping Requested: ${taskId}`,
+      message: remarks || 'Production team requested re-scraping due to validation errors.',
+      category: 'qc_update',
+      timestamp: 'Just now',
+      read: false,
+      actionUrl: 'rework-queue',
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+
+    const targetTask = tasks.find((t) => t.id === taskId);
+    const assigneeEmail = targetTask?.primaryAssignee
+      ? employees.find((e) => e.name === targetTask.primaryAssignee)?.email || 'karthik.r@vservetech.com'
+      : 'karthik.r@vservetech.com';
+
+    const newEmail: EmailLog = {
+      id: `eml-${Date.now()}`,
+      recipient: assigneeEmail,
+      recipientName: targetTask?.primaryAssignee || 'Assigned Scraper',
+      subject: `Re-Scraping Request: ${taskId}`,
+      taskRef: taskId,
+      status: 'delivered',
+      sentAt: new Date().toLocaleTimeString(),
+      deliveryTime: '0.8s',
     };
     setEmailLogs((prev) => [newEmail, ...prev]);
   };
@@ -740,6 +797,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleDarkMode,
         selectedTaskIdForQC,
         setSelectedTaskIdForQC,
+        inspectedTaskId,
+        setInspectedTaskId,
+        inspectedProjectId,
+        setInspectedProjectId,
         isCreateTaskModalOpen,
         setIsCreateTaskModalOpen,
         isCommandPaletteOpen,
@@ -754,6 +815,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importExportLogs,
         approveManagerQC,
         requestReworkQC,
+        reScrapingRequest,
         rejectQC,
         approveProduction,
         rejectProduction,

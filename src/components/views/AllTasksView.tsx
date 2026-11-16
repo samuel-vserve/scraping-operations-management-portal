@@ -31,8 +31,10 @@ import { Task, TaskPriority, TaskStatus } from '../../types';
 export const AllTasksView: React.FC = () => {
   const {
     tasks,
+    currentUserRole,
     setIsCreateTaskModalOpen,
     setSelectedTaskIdForQC,
+    setInspectedTaskId,
     setCurrentView,
     downloadScrapedFile,
     bulkAssignTasks,
@@ -82,6 +84,16 @@ export const AllTasksView: React.FC = () => {
 
       // Priority filter
       if (selectedPriority !== 'all' && task.priority !== selectedPriority) return false;
+
+      // Role isolation: Production Users only view & manage their created/assigned tasks
+      if (currentUserRole === 'production_user') {
+        const isMine =
+          task.productionUser === 'Divya Murugan' ||
+          task.createdBy === 'Divya Murugan' ||
+          task.id === 'TSK-1048' ||
+          task.id === 'TSK-1049';
+        if (!isMine) return false;
+      }
 
       // Search query
       if (searchQuery.trim()) {
@@ -408,7 +420,7 @@ export const AllTasksView: React.FC = () => {
                       className={`hover:bg-slate-50/60 dark:hover:bg-zinc-900/40 transition-colors cursor-pointer ${
                         isSelected ? 'bg-indigo-50/30 dark:bg-indigo-950/20' : ''
                       }`}
-                      onClick={() => setInspectedTask(task)}
+                      onClick={() => setInspectedTaskId(task.id)}
                     >
                       <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
@@ -513,7 +525,7 @@ export const AllTasksView: React.FC = () => {
                             </button>
                           )}
                           <button
-                            onClick={() => setInspectedTask(task)}
+                            onClick={() => setInspectedTaskId(task.id)}
                             className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                             title="Inspect Details"
                           >
