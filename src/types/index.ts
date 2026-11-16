@@ -76,7 +76,8 @@ export interface Employee {
   email: string;
   avatar: string;
   role: string;
-  team: string;
+  team: string; // primary team
+  assignedTeams?: string[]; // multiple teams/pods handled by this user
   designation: string;
   activeTasksCount: number;
   workloadCapacity: number; // percentage 0-100

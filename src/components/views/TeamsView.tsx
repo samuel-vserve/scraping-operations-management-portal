@@ -28,7 +28,7 @@ interface TeamsViewProps {
 }
 
 export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) => {
-  const { teams, employees, tasks, updateUserTeam } = useApp();
+  const { teams, employees, tasks, updateUserTeam, updateUserTeams } = useApp();
 
   const [activeTab, setActiveTab] = useState<'teams' | 'members'>(defaultTab);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
@@ -37,6 +37,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
 
   // Edit user team assignment modal
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [targetTeams, setTargetTeams] = useState<string[]>(['Lawson Production Team']);
   const [targetTeam, setTargetTeam] = useState<string>('Lawson Production Team');
 
   // 1 Core Scraping Team
@@ -62,7 +63,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
 
   const handleSaveTeamAssignment = () => {
     if (!editingEmployee) return;
-    updateUserTeam(editingEmployee.id, targetTeam);
+    updateUserTeams(editingEmployee.id, targetTeams.length > 0 ? targetTeams : [targetTeam]);
     setEditingEmployee(null);
   };
 
@@ -385,6 +386,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
                     onClick={() => {
                       setEditingEmployee(emp);
                       setTargetTeam(emp.team);
+                      setTargetTeams(emp.assignedTeams && emp.assignedTeams.length > 0 ? emp.assignedTeams : [emp.team]);
                     }}
                     className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
                     title="Change Team Assignment"
@@ -394,11 +396,18 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
                 </div>
 
                 <div className="space-y-1.5 text-xs font-mono pt-2 border-t border-border">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Assigned Pod:</span>
-                    <span className="font-semibold text-slate-800 dark:text-zinc-200 truncate max-w-[170px]">
-                      {emp.team}
-                    </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-slate-400 text-[10px]">Assigned Pod(s):</span>
+                    <div className="flex flex-wrap gap-1">
+                      {(emp.assignedTeams && emp.assignedTeams.length > 0 ? emp.assignedTeams : [emp.team]).map((t) => (
+                        <span
+                          key={t}
+                          className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-sans font-medium"
+                        >
+                          {t.replace(' Team', '').replace(' Engineering Pod', '')}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Completed Tasks:</span>
@@ -469,24 +478,93 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
             </div>
 
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              Reassign <strong className="text-slate-900 dark:text-zinc-100">{editingEmployee.name}</strong> to a specific Production Team or the Core Scraping Engineering Pod.
+              Configure multi-pod allocation for <strong className="text-slate-900 dark:text-zinc-100">{editingEmployee.name}</strong>. Operators can handle multiple Production Teams and Scraping pods concurrently.
             </p>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
-                Select Destination Team:
-              </label>
-              <select
-                value={targetTeam}
-                onChange={(e) => setTargetTeam(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-xs text-slate-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                {teams.map((t) => (
-                  <option key={t.id} value={t.name}>
-                    {t.name} ({t.teamType === 'scraping' ? 'Scraping Pod' : 'Production Pod'})
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-700 dark:text-zinc-300">
+                  Select Assigned Pods ({targetTeams.length} Selected):
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTargetTeams([
+                      'Lawson Production Team',
+                      'Surya Production Team',
+                      'DTS Automation Team',
+                      'Altius Enterprise Team',
+                    ])
+                  }
+                  className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                >
+                  + All Production
+                </button>
+              </div>
+
+              {/* Selected Pods Preview Chips */}
+              {targetTeams.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg bg-slate-50 dark:bg-zinc-900 border border-border">
+                  {targetTeams.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                    >
+                      <span>{t.replace(' Team', '').replace(' Engineering Pod', '')}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTargetTeams((prev) => prev.filter((item) => item !== t))
+                        }
+                        className="hover:text-rose-500"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-1 max-h-48 overflow-y-auto border border-border rounded-lg p-2 bg-card">
+                {teams.map((t) => {
+                  const isChecked = targetTeams.includes(t.name);
+                  return (
+                    <label
+                      key={t.id}
+                      className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer text-xs transition-colors ${
+                        isChecked
+                          ? 'bg-indigo-50/40 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-medium'
+                          : 'border-border/60 hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-700 dark:text-zinc-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() =>
+                            setTargetTeams((prev) =>
+                              prev.includes(t.name)
+                                ? prev.filter((item) => item !== t.name)
+                                : [...prev, t.name]
+                            )
+                          }
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span>{t.name}</span>
+                      </div>
+                      <span
+                        className={`text-[9px] uppercase font-mono px-1.5 py-0.2 rounded font-bold ${
+                          t.teamType === 'scraping'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                        }`}
+                      >
+                        {t.teamType === 'scraping' ? 'Scraping Pod' : 'Production'}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">

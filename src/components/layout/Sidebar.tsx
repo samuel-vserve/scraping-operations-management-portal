@@ -64,7 +64,7 @@ export const Sidebar: React.FC = () => {
     {
       title: 'OPERATIONS',
       items: [
-        { id: 'overview', label: 'Overview', icon: LayoutDashboard, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
         { id: 'my-tasks', label: 'My Tasks', icon: CheckSquare, badge: 3, roles: ['scraper'] },
         {
           id: 'all-tasks',
@@ -109,7 +109,7 @@ export const Sidebar: React.FC = () => {
     {
       title: 'REPORTS',
       items: [
-        { id: 'performance', label: 'Performance Analytics', icon: LineChart, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'performance', label: 'Performance Analytics', icon: LineChart, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
         { id: 'team-reports', label: 'Team Reports', icon: FileSpreadsheet, roles: ['manager', 'production_lead', 'production'] },
         { id: 'employee-reports', label: 'Employee Reports', icon: FileText, roles: ['manager'] },
         { id: 'activity-logs', label: 'Activity Logs', icon: Activity, roles: ['manager', 'production_lead', 'production'] },

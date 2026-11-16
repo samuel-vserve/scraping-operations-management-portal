@@ -68,6 +68,7 @@ interface AppContextType {
   reassignTaskScraper: (taskId: string, newScraperName: string, reason?: string) => void;
   updateTaskInternalProgress: (taskId: string, progress: number, internalExecutionState?: string) => void;
   updateUserTeam: (employeeId: string, newTeamName: string) => void;
+  updateUserTeams: (employeeId: string, assignedTeams: string[], role?: string) => void;
   defaultScrapingAssignee: string;
   setDefaultScrapingAssignee: (name: string) => void;
   uploadScrapedFile: (taskId: string, fileName: string, fileSize: string, skuCount: number) => void;
@@ -668,7 +669,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setEmployees((prev) =>
       prev.map((emp) => {
         if (emp.id === employeeId || emp.name === employeeId) {
-          return { ...emp, team: newTeamName };
+          const currentAssigned = emp.assignedTeams || [emp.team];
+          const updatedAssigned = currentAssigned.includes(newTeamName)
+            ? currentAssigned
+            : [...currentAssigned, newTeamName];
+          return { ...emp, team: newTeamName, assignedTeams: updatedAssigned };
+        }
+        return emp;
+      })
+    );
+  };
+
+  const updateUserTeams = (employeeId: string, assignedTeams: string[], role?: string) => {
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id === employeeId || emp.name === employeeId) {
+          const primary = assignedTeams.length > 0 ? assignedTeams[0] : emp.team;
+          return {
+            ...emp,
+            team: primary,
+            assignedTeams: assignedTeams.length > 0 ? assignedTeams : [primary],
+            ...(role ? { role } : {}),
+          };
         }
         return emp;
       })
@@ -823,6 +845,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reassignTaskScraper,
         updateTaskInternalProgress,
         updateUserTeam,
+        updateUserTeams,
         defaultScrapingAssignee,
         setDefaultScrapingAssignee,
         uploadScrapedFile,

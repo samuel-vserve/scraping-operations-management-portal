@@ -18,14 +18,24 @@ import {
 import { Employee, UserRole } from '../../types';
 
 export const UserManagementView: React.FC = () => {
-  const { employees, updateUserTeam } = useApp();
+  const { employees, updateUserTeam, updateUserTeams } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [editingUser, setEditingUser] = useState<Employee | null>(null);
-  const [targetTeam, setTargetTeam] = useState<string>('Lawson Production Team');
+  const [targetTeams, setTargetTeams] = useState<string[]>(['Lawson Production Team']);
   const [targetRole, setTargetRole] = useState<string>('Production Lead');
   const [showAddUserModal, setShowAddUserModal] = useState<boolean>(false);
+
+  // Available Pods / Teams in the Organization
+  const ALL_AVAILABLE_PODS = [
+    { id: 'lawson', name: 'Lawson Production Team', type: 'production', label: 'Lawson Production Pod' },
+    { id: 'surya', name: 'Surya Production Team', type: 'production', label: 'Surya Production Pod' },
+    { id: 'dts', name: 'DTS Automation Team', type: 'production', label: 'DTS Automation Pod' },
+    { id: 'altius', name: 'Altius Enterprise Team', type: 'production', label: 'Altius Enterprise Pod' },
+    { id: 'scraping', name: 'Core Scraping Engineering Pod', type: 'scraping', label: 'Core Scraping Engineering Pod (Extraction)' },
+    { id: 'operations', name: 'Operations Leadership', type: 'operations', label: 'Operations Leadership & QA' },
+  ];
 
   // New user form state
   const [newUserName, setNewUserName] = useState('');
@@ -38,7 +48,8 @@ export const UserManagementView: React.FC = () => {
       emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.team.toLowerCase().includes(searchQuery.toLowerCase());
+      emp.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (emp.assignedTeams && emp.assignedTeams.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
 
     const matchRole =
       roleFilter === 'all' ||
@@ -48,9 +59,24 @@ export const UserManagementView: React.FC = () => {
     return matchSearch && matchRole;
   });
 
+  const toggleTeamSelection = (teamName: string) => {
+    setTargetTeams((prev) =>
+      prev.includes(teamName) ? prev.filter((t) => t !== teamName) : [...prev, teamName]
+    );
+  };
+
+  const handleSelectAllProduction = () => {
+    setTargetTeams([
+      'Lawson Production Team',
+      'Surya Production Team',
+      'DTS Automation Team',
+      'Altius Enterprise Team',
+    ]);
+  };
+
   const handleSaveUserEdit = () => {
     if (!editingUser) return;
-    updateUserTeam(editingUser.id, targetTeam);
+    updateUserTeams(editingUser.id, targetTeams.length > 0 ? targetTeams : ['Lawson Production Team'], targetRole);
     setEditingUser(null);
   };
 
@@ -120,7 +146,7 @@ export const UserManagementView: React.FC = () => {
               <tr>
                 <th className="py-3 px-4">User</th>
                 <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-4">Assigned Team / Pod</th>
+                <th className="py-3 px-4">Assigned Pods / Multi-Team</th>
                 <th className="py-3 px-4">Active Tasks</th>
                 <th className="py-3 px-4">QC Approval Rate</th>
                 <th className="py-3 px-4">Status</th>
@@ -128,65 +154,89 @@ export const UserManagementView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-8 h-8 rounded-full object-cover border border-border"
-                      />
-                      <div>
-                        <div className="font-bold text-slate-900 dark:text-zinc-100">{user.name}</div>
-                        <div className="text-[11px] font-mono text-slate-400">{user.email}</div>
+              {filteredUsers.map((user) => {
+                const userTeams = user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team];
+
+                return (
+                  <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={user.avatar}
+                          alt={user.name}
+                          className="w-8 h-8 rounded-full object-cover border border-border"
+                        />
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-zinc-100">{user.name}</div>
+                          <div className="text-[11px] font-mono text-slate-400">{user.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    {user.role.toLowerCase().includes('manager') ? (
-                      <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 text-[10px] font-bold">
-                        Manager
+                    </td>
+                    <td className="py-3 px-4">
+                      {user.role.toLowerCase().includes('manager') ? (
+                        <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 text-[10px] font-bold">
+                          Operations Manager
+                        </span>
+                      ) : user.team.includes('Scraping') ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold">
+                          Scraping Engineer
+                        </span>
+                      ) : user.role.toLowerCase().includes('lead') ? (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 text-[10px] font-bold">
+                          Production Lead ({userTeams.length} Pods)
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 text-[10px] font-bold">
+                          Production User
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap items-center gap-1 max-w-[260px]">
+                        {userTeams.map((t) => (
+                          <span
+                            key={t}
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                              t.includes('Scraping')
+                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200'
+                                : t.includes('Operations')
+                                ? 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-200'
+                                : 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200'
+                            }`}
+                          >
+                            {t.replace(' Team', '').replace(' Engineering Pod', '')}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-zinc-100">
+                      {user.activeTasksCount}
+                    </td>
+                    <td className="py-3 px-4 font-mono font-bold text-emerald-600">
+                      {user.qcApprovalRate}%
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Active
                       </span>
-                    ) : user.team.includes('Scraping') ? (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold">
-                        Scraping Engineer
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 text-[10px] font-bold">
-                        Production Lead
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 font-medium text-slate-800 dark:text-zinc-200">
-                    {user.team}
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-zinc-100">
-                    {user.activeTasksCount}
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-emerald-600">
-                    {user.qcApprovalRate}%
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Active
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => {
-                        setEditingUser(user);
-                        setTargetTeam(user.team);
-                      }}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-card hover:bg-slate-100 dark:hover:bg-zinc-800 text-[11px] font-semibold text-slate-700 dark:text-zinc-300 transition-colors"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                      Configure
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => {
+                          setEditingUser(user);
+                          setTargetRole(user.role);
+                          setTargetTeams(user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team]);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border bg-card hover:bg-slate-100 dark:hover:bg-zinc-800 text-[11px] font-semibold text-slate-700 dark:text-zinc-300 transition-colors shadow-xs"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Configure
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -220,23 +270,113 @@ export const UserManagementView: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Role Configuration */}
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                  Assigned Team / Pod
+                  Operational Role
                 </label>
                 <select
-                  value={targetTeam}
-                  onChange={(e) => setTargetTeam(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card text-slate-800 dark:text-zinc-200"
+                  value={targetRole}
+                  onChange={(e) => setTargetRole(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card text-slate-800 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="Core Scraping Engineering Pod">Core Scraping Engineering Pod (Extraction)</option>
-                  <option value="Lawson Production Team">Lawson Production Team</option>
-                  <option value="Surya Production Team">Surya Production Team</option>
-                  <option value="DTS Automation Team">DTS Automation Team</option>
-                  <option value="Altius Enterprise Team">Altius Enterprise Team</option>
-                  <option value="Operations Leadership">Operations Leadership</option>
+                  <option value="Operations Manager">Operations Manager (Super Admin)</option>
+                  <option value="Production Lead">Production Lead (Multi-Pod Manager)</option>
+                  <option value="Production User">Production User (Task Owner & QC)</option>
+                  <option value="Scraping Engineer">Scraping Engineer (Extraction Pod)</option>
+                  <option value="Guest User">Guest User (Requestor Only)</option>
                 </select>
+              </div>
+
+              {/* Multi-Team Pod Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                    Assigned Teams / Multi-Pod Selection ({targetTeams.length} Selected)
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllProduction}
+                      className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                    >
+                      + All 4 Production
+                    </button>
+                    <span className="text-slate-300 dark:text-zinc-600 text-xs">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setTargetTeams([])}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 font-semibold"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {/* Selected Pods Preview Chips */}
+                {targetTeams.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-border mb-2.5">
+                    {targetTeams.map((teamName) => (
+                      <span
+                        key={teamName}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 text-[10px] font-semibold border border-indigo-200 dark:border-indigo-800"
+                      >
+                        <span>{teamName}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleTeamSelection(teamName)}
+                          className="hover:text-rose-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Checkbox Options List */}
+                <div className="space-y-1.5 max-h-56 overflow-y-auto border border-border rounded-xl p-2 bg-card">
+                  {ALL_AVAILABLE_PODS.map((pod) => {
+                    const isChecked = targetTeams.includes(pod.name);
+
+                    return (
+                      <label
+                        key={pod.id}
+                        className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors text-xs ${
+                          isChecked
+                            ? 'bg-indigo-50/40 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-medium'
+                            : 'border-border/60 hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleTeamSelection(pod.name)}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <div>
+                            <span className="font-semibold block">{pod.name}</span>
+                            <span className="text-[10px] text-slate-400 block">{pod.label}</span>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`text-[9px] uppercase font-mono px-1.5 py-0.2 rounded font-bold ${
+                            pod.type === 'scraping'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : pod.type === 'operations'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                          }`}
+                        >
+                          {pod.type}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

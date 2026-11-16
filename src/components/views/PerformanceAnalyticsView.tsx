@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Activity,
+  Check,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -37,10 +38,17 @@ import {
 } from 'recharts';
 
 export const PerformanceAnalyticsView: React.FC = () => {
-  const { tasks, currentWorkspace } = useApp();
+  const { tasks, teams, currentUserRole } = useApp();
 
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [selectedDomain, setSelectedDomain] = useState<string>('all');
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+
+  const toggleTeamFilter = (teamName: string) => {
+    setSelectedTeams((prev) =>
+      prev.includes(teamName) ? prev.filter((t) => t !== teamName) : [...prev, teamName]
+    );
+  };
 
   // Velocity telemetry data
   const velocityData = [
@@ -54,15 +62,23 @@ export const PerformanceAnalyticsView: React.FC = () => {
     { date: 'Nov 16', actualSkus: 61200, targetSla: 50000, latencyMs: 155 },
   ];
 
-  // Domain Anti-Bot and Friction stats
+  // Domain Anti-Bot and Friction stats with Team Attribution
   const domainTelemetry = [
-    { domain: 'grainger.com', targetSkus: 84000, extracted: 83200, successRate: 99.0, botTier: 'Cloudflare Turnstile', latency: '185ms', lead: 'Karthik R', status: 'Optimal' },
-    { domain: 'mcmaster.com', targetSkus: 62000, extracted: 61400, successRate: 99.0, botTier: 'Akamai Sensor Data', latency: '310ms', lead: 'Sneha Patel', status: 'Optimal' },
-    { domain: 'fastenal.com', targetSkus: 45000, extracted: 43200, successRate: 96.0, botTier: 'PerimeterX / Kasada', latency: '440ms', lead: 'Karthik R', status: 'Attention' },
-    { domain: 'zoro.com', targetSkus: 38000, extracted: 37900, successRate: 99.7, botTier: 'Cloudflare WAF', latency: '160ms', lead: 'Sneha Patel', status: 'Optimal' },
-    { domain: 'mscdirect.com', targetSkus: 29000, extracted: 28400, successRate: 97.9, botTier: 'DataDome Challenge', latency: '390ms', lead: 'Karthik R', status: 'Optimal' },
-    { domain: 'automationdirect.com', targetSkus: 18000, extracted: 17950, successRate: 99.7, botTier: 'Standard Rate-Limit', latency: '120ms', lead: 'Samuel P', status: 'Optimal' },
+    { domain: 'grainger.com', team: 'Lawson Production Team', targetSkus: 84000, extracted: 83200, successRate: 99.0, botTier: 'Cloudflare Turnstile', latency: '185ms', lead: 'Karthik R', status: 'Optimal' },
+    { domain: 'mcmaster.com', team: 'Surya Production Team', targetSkus: 62000, extracted: 61400, successRate: 99.0, botTier: 'Akamai Sensor Data', latency: '310ms', lead: 'Sneha Patel', status: 'Optimal' },
+    { domain: 'fastenal.com', team: 'Lawson Production Team', targetSkus: 45000, extracted: 43200, successRate: 96.0, botTier: 'PerimeterX / Kasada', latency: '440ms', lead: 'Karthik R', status: 'Attention' },
+    { domain: 'zoro.com', team: 'DTS Automation Team', targetSkus: 38000, extracted: 37900, successRate: 99.7, botTier: 'Cloudflare WAF', latency: '160ms', lead: 'Sneha Patel', status: 'Optimal' },
+    { domain: 'mscdirect.com', team: 'Altius Enterprise Team', targetSkus: 29000, extracted: 28400, successRate: 97.9, botTier: 'DataDome Challenge', latency: '390ms', lead: 'Karthik R', status: 'Optimal' },
+    { domain: 'automationdirect.com', team: 'Core Scraping Engineering Pod', targetSkus: 18000, extracted: 17950, successRate: 99.7, botTier: 'Standard Rate-Limit', latency: '120ms', lead: 'Samuel P', status: 'Optimal' },
   ];
+
+  const filteredDomainTelemetry = useMemo(() => {
+    return domainTelemetry.filter((d) => {
+      const matchDomain = selectedDomain === 'all' || d.domain === selectedDomain;
+      const matchTeam = selectedTeams.length === 0 || selectedTeams.includes(d.team);
+      return matchDomain && matchTeam;
+    });
+  }, [domainTelemetry, selectedDomain, selectedTeams]);
 
   // Failure and error distribution
   const failureReasons = [
@@ -151,6 +167,64 @@ export const PerformanceAnalyticsView: React.FC = () => {
             Export Telemetry CSV
           </button>
         </div>
+      </div>
+
+      {/* Multi-Team Telemetry Filter Bar */}
+      <div className="p-3.5 rounded-xl border border-border bg-card shadow-subtle flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+            <Layers className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Multi-Pod Telemetry:</span>
+          </span>
+
+          <button
+            onClick={() => setSelectedTeams([])}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              selectedTeams.length === 0
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-card border border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            All Pods Aggregate
+          </button>
+
+          {teams.map((t) => {
+            const isSelected = selectedTeams.includes(t.name);
+            return (
+              <button
+                key={t.id}
+                onClick={() => toggleTeamFilter(t.name)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                  isSelected
+                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300 shadow-xs'
+                    : 'bg-card border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isSelected ? 'bg-indigo-600' : 'bg-slate-400'
+                  }`}
+                />
+                <span>{t.name.replace(' Team', '').replace(' Engineering Pod', '')}</span>
+                {isSelected && <Check className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedTeams.length > 0 && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-500 font-medium text-[11px]">
+              {selectedTeams.length} Pods Active
+            </span>
+            <button
+              onClick={() => setSelectedTeams([])}
+              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+            >
+              Reset Multi-Team
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 4 Telemetry KPI Cards */}
@@ -386,6 +460,7 @@ export const PerformanceAnalyticsView: React.FC = () => {
             <thead className="bg-slate-50 dark:bg-zinc-900/60 border-b border-border text-slate-500 dark:text-zinc-400 uppercase font-semibold text-[10px] tracking-wider">
               <tr>
                 <th className="py-3 px-4">Target Domain</th>
+                <th className="py-3 px-4">Assigned Pod</th>
                 <th className="py-3 px-4">Target SKUs</th>
                 <th className="py-3 px-4">Extracted SKUs</th>
                 <th className="py-3 px-4">Success Rate</th>
@@ -396,52 +471,55 @@ export const PerformanceAnalyticsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {domainTelemetry
-                .filter((d) => selectedDomain === 'all' || d.domain === selectedDomain)
-                .map((row) => (
-                  <tr key={row.domain} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                      {row.domain}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-700 dark:text-zinc-300">
-                      {row.targetSkus.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-zinc-100">
-                      {row.extracted.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-emerald-600">{row.successRate}%</span>
-                        <div className="w-12 bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                          <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${row.successRate}%` }} />
-                        </div>
+              {filteredDomainTelemetry.map((row) => (
+                <tr key={row.domain} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 transition-colors">
+                  <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                    {row.domain}
+                  </td>
+                  <td className="py-3 px-4 text-xs font-medium text-slate-700 dark:text-zinc-300">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-[10px] font-semibold border border-border">
+                      {row.team.replace(' Team', '').replace(' Engineering Pod', '')}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 font-mono text-slate-700 dark:text-zinc-300">
+                    {row.targetSkus.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-zinc-100">
+                    {row.extracted.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-emerald-600">{row.successRate}%</span>
+                      <div className="w-12 bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${row.successRate}%` }} />
                       </div>
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-zinc-400">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-[11px] font-medium border border-border">
-                        {row.botTier}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-600 dark:text-zinc-400">
-                      {row.latency}
-                    </td>
-                    <td className="py-3 px-4 text-slate-700 dark:text-zinc-300 font-medium">
-                      {row.lead}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          row.status === 'Optimal'
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200'
-                        }`}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-slate-600 dark:text-zinc-400">
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-[11px] font-medium border border-border">
+                      {row.botTier}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 font-mono text-slate-600 dark:text-zinc-400">
+                    {row.latency}
+                  </td>
+                  <td className="py-3 px-4 text-slate-700 dark:text-zinc-300 font-medium">
+                    {row.lead}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        row.status === 'Optimal'
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

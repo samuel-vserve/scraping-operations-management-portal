@@ -323,11 +323,7 @@ export const Topbar: React.FC = () => {
                       setIsProfileOpen(false);
                       if (r.id === 'guest') {
                         setCurrentView('guest-portal');
-                      } else if (r.id === 'production_user') {
-                        setCurrentView('all-tasks');
-                      } else if (r.id === 'scraper') {
-                        setCurrentView('my-tasks');
-                      } else if (r.id === 'manager' || r.id === 'production_lead') {
+                      } else {
                         setCurrentView('overview');
                       }
                     }}

@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  Check,
 } from 'lucide-react';
 import { StatCard } from '../common/StatCard';
 import { StatusBadge } from '../common/StatusBadge';
@@ -55,6 +56,7 @@ export const ManagerDashboardView: React.FC = () => {
     setIsCreateTaskModalOpen,
     bulkUpdateStatus,
     bulkAssignTasks,
+    currentUserRole,
   } = useApp();
 
   // Table State
@@ -62,11 +64,19 @@ export const ManagerDashboardView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [teamFilter, setTeamFilter] = useState<string>('all');
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [sortField, setSortField] = useState<keyof Task>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+
+  const toggleTeamFilter = (teamName: string) => {
+    setSelectedTeams((prev) =>
+      prev.includes(teamName) ? prev.filter((t) => t !== teamName) : [...prev, teamName]
+    );
+    setCurrentPage(1);
+  };
 
   // KPI calculations from real data
   const totalProjects = projects.length;
@@ -134,7 +144,11 @@ export const ManagerDashboardView: React.FC = () => {
 
       const matchStatus = statusFilter === 'all' || t.status === statusFilter;
       const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter;
-      const matchTeam = teamFilter === 'all' || t.assignedTeam === teamFilter;
+      const matchTeam =
+        (teamFilter === 'all' || t.assignedTeam === teamFilter || t.productionTeam === teamFilter) &&
+        (selectedTeams.length === 0 ||
+          selectedTeams.includes(t.assignedTeam) ||
+          selectedTeams.includes(t.productionTeam || ''));
 
       return matchSearch && matchStatus && matchPriority && matchTeam;
     }).sort((a, b) => {
@@ -148,7 +162,7 @@ export const ManagerDashboardView: React.FC = () => {
       }
       return 0;
     });
-  }, [tasks, searchQuery, statusFilter, priorityFilter, teamFilter, sortField, sortOrder]);
+  }, [tasks, searchQuery, statusFilter, priorityFilter, teamFilter, selectedTeams, sortField, sortOrder]);
 
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage) || 1;
   const paginatedTasks = filteredTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -187,14 +201,32 @@ export const ManagerDashboardView: React.FC = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
-              Good Morning, Samuel P
+              {currentUserRole === 'production_user'
+                ? 'Good Morning, Divya Murugan'
+                : currentUserRole === 'scraper'
+                ? 'Good Morning, Karthik R'
+                : currentUserRole === 'production_lead'
+                ? 'Good Morning, Priya Nair'
+                : 'Good Morning, Samuel P'}
             </h1>
             <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold border border-emerald-200 dark:border-emerald-800">
-              Operations Active
+              {currentUserRole === 'production_user'
+                ? 'Production Pod Operations'
+                : currentUserRole === 'scraper'
+                ? 'Extraction Pod Active'
+                : currentUserRole === 'production_lead'
+                ? 'Multi-Pod Lead'
+                : 'Operations Super Admin'}
             </span>
           </div>
           <p className="text-xs md:text-sm text-slate-500 dark:text-zinc-400">
-            Here&apos;s what&apos;s happening across your scraping operations today.
+            {currentUserRole === 'production_user'
+              ? 'Real-time overview of your production batches, extraction deliverables, and QC metrics.'
+              : currentUserRole === 'scraper'
+              ? 'Real-time engineering overview of web extraction pipelines, crawler speed, and assigned tasks.'
+              : currentUserRole === 'production_lead'
+              ? 'Multi-team overview coordinating Lawson, Surya, DTS, and Altius production pods.'
+              : "Here's what's happening across all scraping & production operations today."}
           </p>
         </div>
 
@@ -646,6 +678,72 @@ export const ManagerDashboardView: React.FC = () => {
                 className="px-2 py-1 rounded bg-indigo-600 text-white font-medium hover:bg-indigo-700"
               >
                 Export Selected
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Multi-Team Quick Filter Strip */}
+        <div className="px-4 py-2.5 bg-slate-50/70 dark:bg-zinc-900/60 border-b border-border flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Multi-Team Selection:
+            </span>
+            <button
+              onClick={() => {
+                setSelectedTeams([]);
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                selectedTeams.length === 0
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-card border border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+              }`}
+            >
+              All Pods ({tasks.length})
+            </button>
+            {teams.map((t) => {
+              const isSelected = selectedTeams.includes(t.name);
+              const teamTaskCount = tasks.filter(
+                (task) => task.assignedTeam === t.name || task.productionTeam === t.name
+              ).length;
+
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => toggleTeamFilter(t.name)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                    isSelected
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300 shadow-xs'
+                      : 'bg-card border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isSelected ? 'bg-indigo-600' : 'bg-slate-400'
+                    }`}
+                  />
+                  <span>{t.name.replace(' Team', '').replace(' Engineering Pod', '')}</span>
+                  <span className="font-mono text-[10px] opacity-70">({teamTaskCount})</span>
+                  {isSelected && <Check className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedTeams.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-500 font-medium">
+                {selectedTeams.length} pod{selectedTeams.length > 1 ? 's' : ''} active
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedTeams([]);
+                  setCurrentPage(1);
+                }}
+                className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+              >
+                Reset Multi-Team
               </button>
             </div>
           )}
