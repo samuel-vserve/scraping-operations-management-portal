@@ -50,13 +50,21 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
     const matchSearch =
       emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
       emp.team.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+      (emp.assignedTeams && emp.assignedTeams.some((t) => t.toLowerCase().includes(employeeSearch.toLowerCase()))) ||
       emp.designation.toLowerCase().includes(employeeSearch.toLowerCase());
 
     const isScraper = emp.team === 'Core Scraping Engineering Pod' || emp.role.toLowerCase().includes('scraping');
     const matchRole =
       roleFilter === 'all' ? true : roleFilter === 'scraping' ? isScraper : !isScraper;
 
-    const matchTeam = !selectedTeam || emp.team === selectedTeam.name;
+    const empTeams = emp.assignedTeams && emp.assignedTeams.length > 0 ? emp.assignedTeams : [emp.team];
+    const matchTeam =
+      !selectedTeam ||
+      empTeams.some(
+        (t) =>
+          t.toLowerCase().includes(selectedTeam.name.toLowerCase()) ||
+          selectedTeam.name.toLowerCase().includes(t.toLowerCase())
+      );
 
     return matchSearch && matchRole && matchTeam;
   });
@@ -239,7 +247,14 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {productionTeams.map((team) => {
             const isSelected = selectedTeam?.id === team.id;
-            const teamMembers = employees.filter((e) => e.team === team.name);
+            const teamMembers = employees.filter((e) => {
+              const empTeams = e.assignedTeams && e.assignedTeams.length > 0 ? e.assignedTeams : [e.team];
+              return empTeams.some(
+                (t) =>
+                  t.toLowerCase().includes(team.name.toLowerCase()) ||
+                  team.name.toLowerCase().includes(t.toLowerCase())
+              );
+            });
 
             return (
               <div
