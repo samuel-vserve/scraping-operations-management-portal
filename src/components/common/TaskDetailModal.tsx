@@ -127,6 +127,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ taskId, onClos
               <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                 {task.id}
               </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                Task Analytics & Data Inspector
+              </span>
               <StatusBadge status={task.status} />
               <PriorityBadge priority={task.priority} />
               <span className="text-xs text-slate-400">•</span>

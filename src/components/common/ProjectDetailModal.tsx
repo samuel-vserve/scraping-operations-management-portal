@@ -44,6 +44,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ projectI
               <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                 {project.id}
               </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                Project Contributor Dossier
+              </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
                   project.health === 'healthy'
