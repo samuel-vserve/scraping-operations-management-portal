@@ -16,7 +16,9 @@ import {
 export const ProjectsView: React.FC = () => {
   const { projects, tasks, setCurrentView, setInspectedProjectId, currentUserRole, currentEmployee } = useApp();
   const [search, setSearch] = useState('');
-  const [scopeFilter, setScopeFilter] = useState<'all' | 'associated'>('all');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'associated'>(
+    currentUserRole === 'production_user' || currentUserRole === 'scraper' ? 'associated' : 'all'
+  );
 
   const associatedTeams = useMemo(
     () => getEmployeeAssociatedTeams(currentEmployee),
@@ -90,7 +92,7 @@ export const ProjectsView: React.FC = () => {
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100'
                 }`}
               >
-                <span>My Associated Pod Projects</span>
+                <span>Associated Projects</span>
                 <span className="text-[10px] opacity-80">({myPodProjectsCount})</span>
               </button>
             </div>

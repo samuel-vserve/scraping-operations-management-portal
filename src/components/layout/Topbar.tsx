@@ -45,7 +45,7 @@ export const Topbar: React.FC = () => {
       case 'my-tasks':
         return 'My Assigned Tasks';
       case 'all-tasks':
-        return 'All Scraping Tasks';
+        return currentUserRole === 'production_user' || currentUserRole === 'scraper' ? 'Associated Tasks' : 'All Scraping Tasks';
       case 'projects':
         return 'Client Projects';
       case 'teams':

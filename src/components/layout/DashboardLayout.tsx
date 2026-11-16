@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -29,11 +29,23 @@ import { UserManagementView } from '../views/UserManagementView';
 export const DashboardLayout: React.FC = () => {
   const {
     currentView,
+    setCurrentView,
+    currentUserRole,
     inspectedTaskId,
     setInspectedTaskId,
     inspectedProjectId,
     setInspectedProjectId,
   } = useApp();
+
+  // Guard: Scraping User and Production User cannot access Teams/Pods or Team Members
+  useEffect(() => {
+    if (
+      (currentUserRole === 'production_user' || currentUserRole === 'scraper') &&
+      (currentView === 'teams' || currentView === 'team-members' || currentView === 'my-tasks')
+    ) {
+      setCurrentView('all-tasks');
+    }
+  }, [currentUserRole, currentView, setCurrentView]);
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -47,8 +59,14 @@ export const DashboardLayout: React.FC = () => {
       case 'projects':
         return <ProjectsView />;
       case 'teams':
+        if (currentUserRole === 'production_user' || currentUserRole === 'scraper' || currentUserRole === 'production') {
+          return <AllTasksView />;
+        }
         return <TeamsView defaultTab="teams" />;
       case 'team-members':
+        if (currentUserRole === 'production_user' || currentUserRole === 'scraper' || currentUserRole === 'production') {
+          return <AllTasksView />;
+        }
         return <TeamsView defaultTab="members" />;
       case 'guest-portal':
         return <GuestPortalView />;

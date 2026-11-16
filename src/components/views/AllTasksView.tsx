@@ -262,21 +262,17 @@ export const AllTasksView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                {currentUserRole === 'production_user'
-                  ? 'Associated Production Team Tasks'
-                  : currentUserRole === 'scraper'
-                  ? 'Scraping Pod Tasks & Worklist'
+                {currentUserRole === 'production_user' || currentUserRole === 'scraper'
+                  ? 'Associated Tasks'
                   : 'All Scraping Tasks Registry'}
               </h1>
               <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-semibold border border-border">
-                {scopedBaseTasks.length} {currentUserRole === 'production_user' || currentUserRole === 'scraper' ? 'Scoped Tasks' : 'Total Registered'}
+                {scopedBaseTasks.length} {currentUserRole === 'production_user' || currentUserRole === 'scraper' ? 'Associated Tasks' : 'Total Registered'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              {currentUserRole === 'production_user'
-                ? `Logged in as ${currentEmployee.name}. Viewing tasks across your associated production pods (${associatedTeams.join(', ') || currentEmployee.team}).`
-                : currentUserRole === 'scraper'
-                ? `Logged in as ${currentEmployee.name}. Viewing and executing tasks for the ${currentEmployee.team}.`
+              {currentUserRole === 'production_user' || currentUserRole === 'scraper'
+                ? `Logged in as ${currentEmployee.name}. Viewing and managing your associated tasks and extraction workflows.`
                 : 'High-density task grid across all Production Pods, assigned scraping developers, status gates, and deadlines.'}
             </p>
           </div>
