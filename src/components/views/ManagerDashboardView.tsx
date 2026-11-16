@@ -26,7 +26,8 @@ import { StatCard } from '../common/StatCard';
 import { StatusBadge } from '../common/StatusBadge';
 import { PriorityBadge } from '../common/PriorityBadge';
 import { TaskProgress } from '../common/TaskProgress';
-import { Task, TaskStatus, TaskPriority } from '../../types';
+import { Task, TaskStatus, TaskPriority, getEmployeeAssociatedTeams, isTaskAssociatedWithEmployee } from '../../types';
+import confetti from 'canvas-confetti';
 import {
   AreaChart,
   Area,
@@ -57,7 +58,22 @@ export const ManagerDashboardView: React.FC = () => {
     bulkUpdateStatus,
     bulkAssignTasks,
     currentUserRole,
+    currentEmployee,
+    downloadScrapedFile,
+    approveProduction,
+    reScrapingRequest,
   } = useApp();
+
+  // Multi-team awareness: associated teams for current logged-in user
+  const associatedTeams = useMemo(
+    () => getEmployeeAssociatedTeams(currentEmployee),
+    [currentEmployee]
+  );
+
+  // Base tasks scoped strictly to role & associated teams
+  const scopedBaseTasks = useMemo(() => {
+    return tasks.filter((t) => isTaskAssociatedWithEmployee(t, currentEmployee, currentUserRole));
+  }, [tasks, currentEmployee, currentUserRole]);
 
   // Table State
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,15 +94,15 @@ export const ManagerDashboardView: React.FC = () => {
     setCurrentPage(1);
   };
 
-  // KPI calculations from real data
+  // KPI calculations from scoped data
   const totalProjects = projects.length;
-  const activeTasks = tasks.filter((t) => t.status !== 'completed' && t.status !== 'rejected').length;
-  const pendingAssignment = tasks.filter((t) => t.status === 'pending_assignment').length;
-  const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
-  const awaitingQC = tasks.filter((t) => t.status === 'awaiting_manager_qc').length;
-  const reworkRequired = tasks.filter((t) => t.status === 'rework_required').length;
-  const productionPending = tasks.filter((t) => t.status === 'production_pending').length;
-  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const activeTasks = scopedBaseTasks.filter((t) => t.status !== 'completed' && t.status !== 'rejected').length;
+  const pendingAssignment = scopedBaseTasks.filter((t) => t.status === 'pending_assignment').length;
+  const inProgress = scopedBaseTasks.filter((t) => t.status === 'in_progress').length;
+  const awaitingQC = scopedBaseTasks.filter((t) => t.status === 'awaiting_manager_qc').length;
+  const reworkRequired = scopedBaseTasks.filter((t) => t.status === 'rework_required').length;
+  const productionPending = scopedBaseTasks.filter((t) => t.status === 'production_pending').length;
+  const completedTasks = scopedBaseTasks.filter((t) => t.status === 'completed').length;
 
   // Recharts Data
   const weeklyCompletionData = [
@@ -134,7 +150,7 @@ export const ManagerDashboardView: React.FC = () => {
 
   // Filtering & Sorting
   const filteredTasks = useMemo(() => {
-    return tasks.filter((t) => {
+    return scopedBaseTasks.filter((t) => {
       const matchSearch =
         t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -162,7 +178,7 @@ export const ManagerDashboardView: React.FC = () => {
       }
       return 0;
     });
-  }, [tasks, searchQuery, statusFilter, priorityFilter, teamFilter, selectedTeams, sortField, sortOrder]);
+  }, [scopedBaseTasks, searchQuery, statusFilter, priorityFilter, teamFilter, selectedTeams, sortField, sortOrder]);
 
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage) || 1;
   const paginatedTasks = filteredTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -687,7 +703,11 @@ export const ManagerDashboardView: React.FC = () => {
         <div className="px-4 py-2.5 bg-slate-50/70 dark:bg-zinc-900/60 border-b border-border flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
-              Multi-Team Selection:
+              {currentUserRole === 'production_user'
+                ? 'Your Associated Pods:'
+                : currentUserRole === 'scraper'
+                ? 'Active Pod:'
+                : 'Multi-Team Selection:'}
             </span>
             <button
               onClick={() => {
@@ -700,11 +720,16 @@ export const ManagerDashboardView: React.FC = () => {
                   : 'bg-card border border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
               }`}
             >
-              All Pods ({tasks.length})
+              {currentUserRole === 'production_user' ? 'All Associated Pods' : 'All Pods'} ({scopedBaseTasks.length})
             </button>
-            {teams.map((t) => {
+            {(currentUserRole === 'production_user' && associatedTeams.length > 0
+              ? associatedTeams.map((tName) => ({ id: tName, name: tName }))
+              : currentUserRole === 'scraper'
+              ? [{ id: 'core', name: currentEmployee.team || 'Core Scraping Engineering Pod' }]
+              : teams
+            ).map((t) => {
               const isSelected = selectedTeams.includes(t.name);
-              const teamTaskCount = tasks.filter(
+              const teamTaskCount = scopedBaseTasks.filter(
                 (task) => task.assignedTeam === t.name || task.productionTeam === t.name
               ).length;
 
@@ -893,16 +918,76 @@ export const ManagerDashboardView: React.FC = () => {
                       </td>
 
                       <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {currentUserRole === 'production_user' && (
+                            <>
+                              {task.status === 'production_pending' && (
+                                <button
+                                  onClick={() => {
+                                    approveProduction(task.id, 'Production deliverable validated.');
+                                    try {
+                                      confetti({ particleCount: 60, spread: 50, origin: { y: 0.6 } });
+                                    } catch {}
+                                  }}
+                                  className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold border border-emerald-200 dark:border-emerald-800"
+                                  title="Validate and Accept Deliverable"
+                                >
+                                  Accept
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  reScrapingRequest(task.id, 'Production requested re-scraping via Dashboard review.');
+                                }}
+                                className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-semibold border border-amber-200 dark:border-amber-800"
+                                title="Request Re-scraping"
+                              >
+                                Rework
+                              </button>
+                            </>
+                          )}
+
+                          {currentUserRole === 'scraper' && (
+                            <button
+                              onClick={() => {
+                                setInspectedTaskId(task.id);
+                              }}
+                              className="px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold border border-indigo-200 dark:border-indigo-800"
+                              title="Manage Extraction Task"
+                            >
+                              Manage
+                            </button>
+                          )}
+
+                          {currentUserRole === 'manager' && (
+                            <button
+                              onClick={() => {
+                                setSelectedTaskIdForQC(task.id);
+                                setCurrentView('manager-qc');
+                              }}
+                              className="px-2 py-1 rounded bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] font-medium transition-colors"
+                              title="Inspect in Manager QC Workspace"
+                            >
+                              QC Review
+                            </button>
+                          )}
+
+                          {task.outputFileName && (
+                            <button
+                              onClick={() => downloadScrapedFile(task.id)}
+                              className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                              title="Download Scraped Dataset"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           <button
-                            onClick={() => {
-                              setSelectedTaskIdForQC(task.id);
-                              setCurrentView('manager-qc');
-                            }}
-                            className="px-2 py-1 rounded bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] font-medium transition-colors"
-                            title="Inspect in Manager QC Workspace"
+                            onClick={() => setInspectedTaskId(task.id)}
+                            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                            title="Inspect Details"
                           >
-                            QC Review
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>

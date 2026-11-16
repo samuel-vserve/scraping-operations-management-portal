@@ -39,6 +39,7 @@ export const DashboardLayout: React.FC = () => {
     switch (currentView) {
       case 'overview':
         return <ManagerDashboardView />;
+      case 'tasks':
       case 'all-tasks':
         return <AllTasksView />;
       case 'my-tasks':
@@ -54,8 +55,10 @@ export const DashboardLayout: React.FC = () => {
       case 'manager-qc':
       case 'manager-approval':
         return <ManagerQCView mode="all" />;
+      case 'rework':
       case 'rework-queue':
         return <ManagerQCView mode="rework" />;
+      case 'deliverables':
       case 'production-qc':
       case 'production-deliverables':
         return <ProductionQCView />;

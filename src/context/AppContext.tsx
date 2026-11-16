@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   Task,
   Employee,
@@ -11,6 +11,8 @@ import {
   UserRole,
   TaskStatus,
   QCHistoryEntry,
+  getEmployeeAssociatedTeams,
+  isTaskAssociatedWithEmployee,
 } from '../types';
 import {
   initialTasks,
@@ -29,6 +31,7 @@ interface AppContextType {
   setCurrentView: (view: string) => void;
   currentUserRole: UserRole;
   setCurrentUserRole: (role: UserRole) => void;
+  currentEmployee: Employee;
   currentWorkspace: string;
   setCurrentWorkspace: (workspace: string) => void;
   darkMode: boolean;
@@ -121,6 +124,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}teams`);
     return saved ? JSON.parse(saved) : initialTeams;
   });
+
+  // Dynamically resolve logged-in employee profile
+  const currentEmployee = useMemo<Employee>(() => {
+    if (currentUserRole === 'manager') {
+      return employees.find((e) => e.name === 'Samuel P' || e.id === 'emp-1') || employees[0];
+    }
+    if (currentUserRole === 'production_lead' || currentUserRole === 'production') {
+      return employees.find((e) => e.name === 'Priya Nair' || e.id === 'emp-2') || employees[1];
+    }
+    if (currentUserRole === 'production_user') {
+      return employees.find((e) => e.name === 'Divya Murugan' || e.id === 'emp-4') || employees[3];
+    }
+    if (currentUserRole === 'scraper') {
+      return employees.find((e) => e.name === 'Karthik R' || e.id === 'emp-3') || employees[2];
+    }
+    return {
+      id: 'emp-guest',
+      name: 'Mark Stevens',
+      email: 'mark.stevens@client.com',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+      role: 'Guest User',
+      team: '',
+      assignedTeams: [],
+      designation: 'Client Requestor',
+      activeTasksCount: 0,
+      workloadCapacity: 0,
+      completedTasks: 0,
+      qcApprovalRate: 0,
+      availability: 'available',
+    };
+  }, [currentUserRole, employees]);
 
   const [projects] = useState<Project[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}projects`);
@@ -378,13 +412,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const reScrapingRequest = (taskId: string, remarks: string, failingMetrics?: string[]) => {
+    const operatorName = currentEmployee.name || (currentUserRole === 'production_user' ? 'Divya Murugan' : 'Priya Nair');
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== taskId) return t;
         const newEntry: QCHistoryEntry = {
           id: `qc-${Date.now()}`,
           action: 'rework_requested',
-          performedBy: currentUserRole === 'production_user' ? 'Divya Murugan' : 'Priya Nair',
+          performedBy: operatorName,
           role: currentUserRole === 'production_user' ? 'Production User' : 'Production Lead',
           timestamp: new Date().toLocaleString(),
           remarks: remarks || 'Re-scraping requested: missing required fields or data validation failure.',
@@ -451,13 +486,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveProduction = (taskId: string, remarks: string) => {
+    const operatorName = currentEmployee.name || (currentUserRole === 'production_user' ? 'Divya Murugan' : 'Priya Nair');
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
           const newProdEntry = {
             id: `prod-${Date.now()}`,
             action: 'validated' as const,
-            performedBy: 'Priya Nair',
+            performedBy: operatorName,
             timestamp: new Date().toLocaleString(),
             remarks: remarks || 'Production validation successful. Dataset uploaded to Google Drive bucket.',
           };
@@ -475,7 +511,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newNotif: NotificationItem = {
       id: `notif-${Date.now()}`,
       title: 'Production Completed & Synced',
-      message: `${taskId} validated and synchronized to Google Drive client deliverables.`,
+      message: `${taskId} validated by ${operatorName} and synchronized to Google Drive client deliverables.`,
       category: 'production_update',
       timestamp: 'Just now',
       read: false,
@@ -493,20 +529,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       size: targetTask?.outputFileSize || '16.2 MB',
       status: 'completed',
       gdriveSyncStatus: 'synced',
-      uploadedBy: 'Priya Nair',
+      uploadedBy: operatorName,
       timestamp: 'Just now',
     };
     setImportExportLogs((prev) => [newLog, ...prev]);
   };
 
   const rejectProduction = (taskId: string, remarks: string) => {
+    const operatorName = currentEmployee.name || (currentUserRole === 'production_user' ? 'Divya Murugan' : 'Priya Nair');
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
           const newProdEntry = {
             id: `prod-${Date.now()}`,
             action: 'rejected' as const,
-            performedBy: 'Priya Nair',
+            performedBy: operatorName,
             timestamp: new Date().toLocaleString(),
             remarks: remarks || 'Rejected by Production QA. Returns to Rework Queue.',
           };
@@ -521,12 +558,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const assignTask = (data: Partial<Task> & { team?: string; employees?: string[]; primary?: string; productionTeam?: string; productionUser?: string }) => {
+  const assignTask = (data: Partial<Task> & { team?: string; employees?: string[]; primary?: string; productionTeam?: string; productionUser?: string; createdBy?: string; createdByRole?: string }) => {
     const newTaskId = data.id || `TSK-${Math.floor(1000 + Math.random() * 9000)}`;
     const effectivePrimary = data.primary || defaultScrapingAssignee || 'Karthik R';
     const effectiveTeam = data.team || 'Core Scraping Engineering Pod';
     const effectiveEmployees = data.employees && data.employees.length > 0 ? data.employees : [effectivePrimary];
     const isPending = !data.primary && defaultScrapingAssignee === 'unassigned';
+    const defaultProdTeam = currentEmployee.team || 'Lawson Production Team';
+    const defaultProdUser = currentEmployee.name || 'Priya Nair';
 
     const newTask: Task = {
       id: newTaskId,
@@ -539,8 +578,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignedTeam: effectiveTeam,
       assignedEmployees: isPending ? [] : effectiveEmployees,
       primaryAssignee: isPending ? '' : effectivePrimary,
-      productionTeam: data.productionTeam || 'Lawson Production Team',
-      productionUser: data.productionUser || 'Priya Nair',
+      productionTeam: data.productionTeam || defaultProdTeam,
+      productionUser: data.productionUser || defaultProdUser,
+      createdBy: data.createdBy || currentEmployee.name,
+      createdByRole: data.createdByRole || (currentUserRole === 'production_user' ? 'Production User' : currentUserRole === 'scraper' ? 'Scraping Engineer' : 'Operations Manager'),
       internalExecutionState: isPending ? 'Pending Assignment (Awaiting Triage)' : 'Assigned to Scraping Engineer',
       skuCount: data.skuCount || 5000,
       completedSkus: 0,
@@ -812,6 +853,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentView,
         currentUserRole,
         setCurrentUserRole,
+        currentEmployee,
         currentWorkspace,
         setCurrentWorkspace,
         darkMode,

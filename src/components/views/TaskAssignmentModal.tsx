@@ -20,7 +20,7 @@ import {
   User,
   Zap,
 } from 'lucide-react';
-import { TaskPriority } from '../../types';
+import { TaskPriority, getEmployeeAssociatedTeams } from '../../types';
 import confetti from 'canvas-confetti';
 
 export const TaskAssignmentModal: React.FC = () => {
@@ -33,7 +33,21 @@ export const TaskAssignmentModal: React.FC = () => {
     assignTask,
     defaultScrapingAssignee,
     currentUserRole,
+    currentEmployee,
   } = useApp();
+
+  const userAssociatedTeams = getEmployeeAssociatedTeams(currentEmployee);
+  const productionTeams = teams.filter((t) => t.teamType === 'production' || !t.name.includes('Scraping'));
+  const selectableProductionTeams =
+    currentUserRole === 'production_user' && userAssociatedTeams.length > 0
+      ? productionTeams.filter((pt) =>
+          userAssociatedTeams.some(
+            (at) =>
+              at.toLowerCase().includes(pt.name.toLowerCase()) ||
+              pt.name.toLowerCase().includes(at.toLowerCase())
+          )
+        )
+      : productionTeams;
 
   const [step, setStep] = useState<number>(1);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
@@ -169,8 +183,8 @@ export const TaskAssignmentModal: React.FC = () => {
       team: 'Core Scraping Engineering Pod',
       employees: effectiveEmployees,
       primary: effectivePrimary,
-      productionTeam,
-      productionUser: productionAssignee,
+      productionTeam: productionTeam || selectableProductionTeams[0]?.name || 'Lawson Production Team',
+      productionUser: currentEmployee?.name || productionAssignee,
       requiredColumns,
       scrapingRequirements: additionalInstructions.split('\n').filter(Boolean),
     });
@@ -339,7 +353,23 @@ export const TaskAssignmentModal: React.FC = () => {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                        Originating Production Team
+                      </label>
+                      <select
+                        value={productionTeam}
+                        onChange={(e) => setProductionTeam(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-card text-xs text-slate-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-indigo-500"
+                      >
+                        {selectableProductionTeams.map((pt) => (
+                          <option key={pt.id} value={pt.name}>
+                            {pt.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
                         Client Entity

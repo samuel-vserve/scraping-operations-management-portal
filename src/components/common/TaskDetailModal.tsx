@@ -750,15 +750,23 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ taskId, onClos
 
             {/* SCRAPER ACTIONS */}
             {currentUserRole === 'scraper' && (
-              <button
-                onClick={() => {
-                  alert('Opening Scraped File Upload modal to store in Google Drive.');
-                }}
-                className="flex items-center gap-1 px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm"
-              >
-                <Cloud className="w-3.5 h-3.5" />
-                Upload Output to Google Drive
-              </button>
+              <>
+                <button
+                  onClick={() => setShowReassignModal(true)}
+                  className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-semibold text-slate-700 dark:text-zinc-300"
+                >
+                  Reassign to Peer Scraper
+                </button>
+                <button
+                  onClick={() => {
+                    alert(`Dataset uploaded for ${task.id}. Transferred to Google Drive vault and submitted for Manager QC.`);
+                  }}
+                  className="flex items-center gap-1 px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm"
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  Upload Output & Submit QC
+                </button>
+              </>
             )}
 
             {/* GUEST ACTIONS */}

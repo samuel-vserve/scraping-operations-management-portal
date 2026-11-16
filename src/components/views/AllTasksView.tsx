@@ -22,16 +22,19 @@ import {
   MoreVertical,
   Check,
   UserPlus,
+  UploadCloud,
 } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 import { PriorityBadge } from '../common/PriorityBadge';
 import { TaskProgress } from '../common/TaskProgress';
-import { Task, TaskPriority, TaskStatus } from '../../types';
+import { Task, TaskPriority, TaskStatus, getEmployeeAssociatedTeams, isTaskAssociatedWithEmployee } from '../../types';
+import confetti from 'canvas-confetti';
 
 export const AllTasksView: React.FC = () => {
   const {
     tasks,
     currentUserRole,
+    currentEmployee,
     setIsCreateTaskModalOpen,
     setSelectedTaskIdForQC,
     setInspectedTaskId,
@@ -42,6 +45,11 @@ export const AllTasksView: React.FC = () => {
     employees,
     teams,
     reassignTaskScraper,
+    reScrapingRequest,
+    approveProduction,
+    submitTaskForQC,
+    updateTaskInternalProgress,
+    uploadScrapedFile,
   } = useApp();
 
   // Search, Filters & Tabs
@@ -52,6 +60,7 @@ export const AllTasksView: React.FC = () => {
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'deadline' | 'skuCount' | 'progress' | 'id'>('deadline');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [personalScopeFilter, setPersonalScopeFilter] = useState<'all' | 'mine'>('all');
 
   // Row selection & bulk actions
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
@@ -61,13 +70,71 @@ export const AllTasksView: React.FC = () => {
   // Drawer detail view
   const [inspectedTask, setInspectedTask] = useState<Task | null>(null);
 
+  // Operational Action Modals
+  const [reworkModalTask, setReworkModalTask] = useState<Task | null>(null);
+  const [reworkRemarks, setReworkRemarks] = useState<string>('Re-scraping requested: specifications and image verification failed.');
+
+  const [reassignModalTask, setReassignModalTask] = useState<Task | null>(null);
+  const [targetReassignScraper, setTargetReassignScraper] = useState<string>('Sneha Patel');
+  const [reassignReasonText, setReassignReasonText] = useState<string>('Workload balancing in Core Pod');
+
+  const [progressModalTask, setProgressModalTask] = useState<Task | null>(null);
+  const [progressValue, setProgressValue] = useState<number>(50);
+  const [progressExecutionState, setProgressExecutionState] = useState<string>('Harvesting via proxy rotation');
+
+  const [uploadModalTask, setUploadModalTask] = useState<Task | null>(null);
+  const [uploadedFileState, setUploadedFileState] = useState<{ name: string; size: string; rows: number } | null>(null);
+  const [detectedCols, setDetectedCols] = useState<string[]>([]);
+
+  // Associated teams for current logged in user (multi-pod awareness)
+  const associatedTeams = useMemo(
+    () => getEmployeeAssociatedTeams(currentEmployee),
+    [currentEmployee]
+  );
+
+  // Base tasks scoped strictly to role & associated teams
+  const scopedBaseTasks = useMemo(() => {
+    return tasks.filter((task) => isTaskAssociatedWithEmployee(task, currentEmployee, currentUserRole));
+  }, [tasks, currentEmployee, currentUserRole]);
+
+  const myCreatedCount = useMemo(() => {
+    return scopedBaseTasks.filter(
+      (t) =>
+        t.createdBy?.toLowerCase() === currentEmployee.name.toLowerCase() ||
+        t.productionUser?.toLowerCase() === currentEmployee.name.toLowerCase()
+    ).length;
+  }, [scopedBaseTasks, currentEmployee]);
+
+  const myAssignedCount = useMemo(() => {
+    return scopedBaseTasks.filter(
+      (t) =>
+        t.primaryAssignee?.toLowerCase() === currentEmployee.name.toLowerCase() ||
+        t.assignedEmployees.some((e) => e.toLowerCase() === currentEmployee.name.toLowerCase())
+    ).length;
+  }, [scopedBaseTasks, currentEmployee]);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 8;
 
   // Filter logic
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    return scopedBaseTasks.filter((task) => {
+      // Personal scope filter (my created tasks vs all associated team tasks)
+      if (personalScopeFilter === 'mine') {
+        if (currentUserRole === 'production_user') {
+          const isMine =
+            task.createdBy?.toLowerCase() === currentEmployee.name.toLowerCase() ||
+            task.productionUser?.toLowerCase() === currentEmployee.name.toLowerCase();
+          if (!isMine) return false;
+        } else if (currentUserRole === 'scraper') {
+          const isMine =
+            task.primaryAssignee?.toLowerCase() === currentEmployee.name.toLowerCase() ||
+            task.assignedEmployees.some((e) => e.toLowerCase() === currentEmployee.name.toLowerCase());
+          if (!isMine) return false;
+        }
+      }
+
       // Tab filter
       if (activeTab === 'pending' && task.status !== 'pending_assignment') return false;
       if (activeTab === 'in_progress' && task.status !== 'in_progress') return false;
@@ -76,24 +143,18 @@ export const AllTasksView: React.FC = () => {
       if (activeTab === 'production_ready' && task.status !== 'production_pending') return false;
       if (activeTab === 'completed' && task.status !== 'completed') return false;
 
-      // Production team filter
-      if (selectedProdTeam !== 'all' && task.productionTeam !== selectedProdTeam) return false;
+      // Production team filter (multi-team check)
+      if (selectedProdTeam !== 'all') {
+        const matchesProd = task.productionTeam?.toLowerCase() === selectedProdTeam.toLowerCase();
+        const matchesAssigned = task.assignedTeam?.toLowerCase() === selectedProdTeam.toLowerCase();
+        if (!matchesProd && !matchesAssigned) return false;
+      }
 
       // Scraper filter
       if (selectedScraper !== 'all' && task.primaryAssignee !== selectedScraper) return false;
 
       // Priority filter
       if (selectedPriority !== 'all' && task.priority !== selectedPriority) return false;
-
-      // Role isolation: Production Users only view & manage their created/assigned tasks
-      if (currentUserRole === 'production_user') {
-        const isMine =
-          task.productionUser === 'Divya Murugan' ||
-          task.createdBy === 'Divya Murugan' ||
-          task.id === 'TSK-1048' ||
-          task.id === 'TSK-1049';
-        if (!isMine) return false;
-      }
 
       // Search query
       if (searchQuery.trim()) {
@@ -118,7 +179,7 @@ export const AllTasksView: React.FC = () => {
       if (sortBy === 'id') comparison = a.id.localeCompare(b.id);
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [tasks, activeTab, selectedProdTeam, selectedScraper, selectedPriority, searchQuery, sortBy, sortOrder]);
+  }, [scopedBaseTasks, activeTab, selectedProdTeam, selectedScraper, selectedPriority, searchQuery, sortBy, sortOrder]);
 
   const totalPages = Math.ceil(filteredTasks.length / pageSize) || 1;
   const paginatedTasks = filteredTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -139,8 +200,22 @@ export const AllTasksView: React.FC = () => {
     }
   };
 
+  const handleSimulateUploadFile = (task: Task) => {
+    const isRework = task.status === 'rework_required';
+    const sampleDetected = isRework
+      ? ['SKU_ID', 'MPN', 'Title', 'Price', 'Thread_Size', 'Material', 'Coating', 'Images']
+      : ['SKU_ID', 'MPN', 'Title', 'Category', 'Price', 'Stock_Status', 'Image_URLs', 'Specs_JSON', 'Extra_Notes'];
+
+    setUploadedFileState({
+      name: `${task.website.replace('.com', '')}_Extracted_Output_${Date.now().toString().slice(-4)}.xlsx`,
+      size: '14.2 MB',
+      rows: task.skuCount || 10000,
+    });
+    setDetectedCols(sampleDetected);
+  };
+
   const handleExportSelectedCSV = () => {
-    const exportData = tasks.filter((t) => selectedTaskIds.length === 0 || selectedTaskIds.includes(t.id));
+    const exportData = scopedBaseTasks.filter((t) => selectedTaskIds.length === 0 || selectedTaskIds.includes(t.id));
     const csvRows = [
       'Task_ID,Project,Website,Client,Production_Team,Primary_Scraper,SKU_Count,Progress,Priority,Status,Deadline',
       ...exportData.map(
@@ -170,6 +245,10 @@ export const AllTasksView: React.FC = () => {
     (e) => e.team === 'Core Scraping Engineering Pod' || e.role.toLowerCase().includes('scraping')
   );
 
+  const peerScrapers = useMemo(() => {
+    return scrapingEngineers.filter((e) => e.name !== currentEmployee.name);
+  }, [scrapingEngineers, currentEmployee]);
+
   const productionTeams = teams.filter((t) => t.teamType === 'production' || !t.name.includes('Scraping'));
 
   return (
@@ -183,14 +262,22 @@ export const AllTasksView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                All Scraping Tasks Registry
+                {currentUserRole === 'production_user'
+                  ? 'Associated Production Team Tasks'
+                  : currentUserRole === 'scraper'
+                  ? 'Scraping Pod Tasks & Worklist'
+                  : 'All Scraping Tasks Registry'}
               </h1>
               <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-semibold border border-border">
-                {tasks.length} Total Registered
+                {scopedBaseTasks.length} {currentUserRole === 'production_user' || currentUserRole === 'scraper' ? 'Scoped Tasks' : 'Total Registered'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              High-density task grid across all Production Pods, assigned scraping developers, status gates, and deadlines.
+              {currentUserRole === 'production_user'
+                ? `Logged in as ${currentEmployee.name}. Viewing tasks across your associated production pods (${associatedTeams.join(', ') || currentEmployee.team}).`
+                : currentUserRole === 'scraper'
+                ? `Logged in as ${currentEmployee.name}. Viewing and executing tasks for the ${currentEmployee.team}.`
+                : 'High-density task grid across all Production Pods, assigned scraping developers, status gates, and deadlines.'}
             </p>
           </div>
         </div>
@@ -209,21 +296,108 @@ export const AllTasksView: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-all"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>New Task Request</span>
+            <span>{currentUserRole === 'production_user' ? 'Request Scraping Task' : 'New Task Request'}</span>
           </button>
         </div>
+      </div>
+
+      {/* Associated Pods Quick Filter Strip */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-border text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-slate-500 uppercase text-[10px] tracking-wider mr-1">
+            {currentUserRole === 'production_user' ? 'Associated Pods:' : currentUserRole === 'scraper' ? 'Active Pod:' : 'Pod Filter:'}
+          </span>
+          <button
+            onClick={() => {
+              setSelectedProdTeam('all');
+              setCurrentPage(1);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              selectedProdTeam === 'all'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-card border border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            {currentUserRole === 'production_user' ? 'All Associated Pods' : 'All Pods'} ({scopedBaseTasks.length})
+          </button>
+
+          {(currentUserRole === 'production_user' && associatedTeams.length > 0
+            ? associatedTeams
+            : currentUserRole === 'scraper'
+            ? [currentEmployee.team || 'Core Scraping Engineering Pod']
+            : productionTeams.map((t) => t.name)
+          ).map((tName) => {
+            const isSelected = selectedProdTeam === tName;
+            const count = scopedBaseTasks.filter(
+              (t) => t.productionTeam?.toLowerCase() === tName.toLowerCase() || t.assignedTeam?.toLowerCase() === tName.toLowerCase()
+            ).length;
+
+            return (
+              <button
+                key={tName}
+                onClick={() => {
+                  setSelectedProdTeam(isSelected ? 'all' : tName);
+                  setCurrentPage(1);
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                  isSelected
+                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300 shadow-xs'
+                    : 'bg-card border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <span>{tName.replace(' Team', '').replace(' Engineering Pod', '')}</span>
+                <span className="font-mono text-[10px] opacity-75">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Personal vs Team Scope Toggle */}
+        {(currentUserRole === 'production_user' || currentUserRole === 'scraper') && (
+          <div className="flex items-center gap-1 p-1 rounded-lg border border-border bg-card shrink-0">
+            <button
+              onClick={() => {
+                setPersonalScopeFilter('all');
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                personalScopeFilter === 'all'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              All Associated ({scopedBaseTasks.length})
+            </button>
+            <button
+              onClick={() => {
+                setPersonalScopeFilter('mine');
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors flex items-center gap-1 ${
+                personalScopeFilter === 'mine'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <span>{currentUserRole === 'production_user' ? 'My Created Tasks' : 'Assigned to Me'}</span>
+              <span className="font-mono text-[10px] opacity-80">
+                ({currentUserRole === 'production_user' ? myCreatedCount : myAssignedCount})
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs Bar */}
       <div className="flex border-b border-border space-x-6 text-xs font-semibold text-slate-500 overflow-x-auto">
         {[
-          { id: 'all', label: 'All Tasks', count: tasks.length },
-          { id: 'pending', label: 'Pending Assignment', count: tasks.filter((t) => t.status === 'pending_assignment').length },
-          { id: 'in_progress', label: 'In Extraction', count: tasks.filter((t) => t.status === 'in_progress').length },
-          { id: 'awaiting_qc', label: 'Awaiting Manager QC', count: tasks.filter((t) => t.status === 'awaiting_manager_qc').length },
-          { id: 'rework', label: 'Rework Required', count: tasks.filter((t) => t.status === 'rework_required').length },
-          { id: 'production_ready', label: 'Production Ready', count: tasks.filter((t) => t.status === 'production_pending').length },
-          { id: 'completed', label: 'Completed Archive', count: tasks.filter((t) => t.status === 'completed').length },
+          { id: 'all', label: 'All Tasks', count: scopedBaseTasks.length },
+          { id: 'pending', label: 'Pending Assignment', count: scopedBaseTasks.filter((t) => t.status === 'pending_assignment').length },
+          { id: 'in_progress', label: 'In Extraction', count: scopedBaseTasks.filter((t) => t.status === 'in_progress').length },
+          { id: 'awaiting_qc', label: 'Awaiting Manager QC', count: scopedBaseTasks.filter((t) => t.status === 'awaiting_manager_qc').length },
+          { id: 'rework', label: 'Rework Required', count: scopedBaseTasks.filter((t) => t.status === 'rework_required').length },
+          { id: 'production_ready', label: 'Production Ready', count: scopedBaseTasks.filter((t) => t.status === 'production_pending').length },
+          { id: 'completed', label: 'Completed Archive', count: scopedBaseTasks.filter((t) => t.status === 'completed').length },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -284,10 +458,15 @@ export const AllTasksView: React.FC = () => {
             }}
             className="px-2.5 py-1.5 rounded-lg border border-border bg-card text-slate-700 dark:text-zinc-300 outline-none font-medium"
           >
-            <option value="all">All Production Pods</option>
-            {productionTeams.map((pt) => (
-              <option key={pt.id} value={pt.name}>
-                {pt.name}
+            <option value="all">
+              {currentUserRole === 'production_user' ? 'All Associated Pods' : 'All Production Pods'}
+            </option>
+            {(currentUserRole === 'production_user' && associatedTeams.length > 0
+              ? associatedTeams
+              : productionTeams.map((pt) => pt.name)
+            ).map((tName) => (
+              <option key={tName} value={tName}>
+                {tName} {currentUserRole === 'production_user' ? '(Your Pod)' : ''}
               </option>
             ))}
           </select>
@@ -503,8 +682,94 @@ export const AllTasksView: React.FC = () => {
                       </td>
 
                       <td className="p-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          {task.status === 'awaiting_manager_qc' && (
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* PRODUCTION USER ACTIONS */}
+                          {currentUserRole === 'production_user' && (
+                            <>
+                              {task.status === 'production_pending' && (
+                                <button
+                                  onClick={() => {
+                                    approveProduction(task.id, 'Validated and accepted deliverable for production catalog.');
+                                    try {
+                                      confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+                                    } catch {}
+                                  }}
+                                  className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] flex items-center gap-1 border border-emerald-200 dark:border-emerald-800"
+                                  title="Accept Deliverable"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Accept</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setReworkModalTask(task);
+                                  setReworkRemarks('Re-scraping requested: specifications and image verification failed.');
+                                }}
+                                className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-semibold text-[10px] flex items-center gap-1 border border-amber-200 dark:border-amber-800"
+                                title="Request Re-scraping"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Rework</span>
+                              </button>
+                            </>
+                          )}
+
+                          {/* SCRAPING USER ACTIONS */}
+                          {currentUserRole === 'scraper' && (
+                            <>
+                              {task.status === 'pending_assignment' && (
+                                <button
+                                  onClick={() => {
+                                    updateTaskInternalProgress(task.id, 10, 'Harvesting Initiated by Scraping Pod');
+                                  }}
+                                  className="px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px]"
+                                  title="Start Extraction"
+                                >
+                                  Start
+                                </button>
+                              )}
+                              {(task.status === 'in_progress' || task.status === 'rework_required') && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setProgressModalTask(task);
+                                      setProgressValue(task.progress || 50);
+                                      setProgressExecutionState(task.internalExecutionState || 'Harvesting catalog');
+                                    }}
+                                    className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-medium text-[10px]"
+                                    title="Update Progress"
+                                  >
+                                    Progress
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setUploadModalTask(task);
+                                      handleSimulateUploadFile(task);
+                                    }}
+                                    className="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px] flex items-center gap-1 border border-emerald-200 dark:border-emerald-800"
+                                    title="Upload Scraped Output & Submit QC"
+                                  >
+                                    <UploadCloud className="w-3 h-3" />
+                                    <span>Upload</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setReassignModalTask(task);
+                                      setTargetReassignScraper(peerScrapers[0]?.name || 'Sneha Patel');
+                                    }}
+                                    className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 text-[10px]"
+                                    title="Reassign to Peer Scraper"
+                                  >
+                                    Reassign
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          {/* MANAGER ACTIONS */}
+                          {currentUserRole === 'manager' && task.status === 'awaiting_manager_qc' && (
                             <button
                               onClick={() => {
                                 setSelectedTaskIdForQC(task.id);
@@ -515,18 +780,22 @@ export const AllTasksView: React.FC = () => {
                               QC Audit
                             </button>
                           )}
+
+                          {/* DOWNLOAD OUTPUT FILE */}
                           {task.outputFileName && (
                             <button
                               onClick={() => downloadScrapedFile(task.id)}
-                              className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-slate-100"
+                              className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-zinc-800"
                               title="Download Scraped Output File"
                             >
                               <Download className="w-3.5 h-3.5" />
                             </button>
                           )}
+
+                          {/* INSPECT DETAILS */}
                           <button
                             onClick={() => setInspectedTaskId(task.id)}
-                            className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800"
                             title="Inspect Details"
                           >
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -767,6 +1036,226 @@ export const AllTasksView: React.FC = () => {
                 className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold"
               >
                 Assign Tasks
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REQUEST REWORK / RE-SCRAPING MODAL */}
+      {reworkModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  Request Re-Scraping / Rework ({reworkModalTask.id})
+                </h3>
+              </div>
+              <button onClick={() => setReworkModalTask(null)} className="p-1 rounded text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
+              Specify why this dataset needs rework or re-scraping before production delivery.
+            </p>
+            <textarea
+              value={reworkRemarks}
+              onChange={(e) => setReworkRemarks(e.target.value)}
+              rows={3}
+              className="w-full p-2.5 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs text-slate-800 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-amber-500"
+              placeholder="Enter re-scraping instructions, missing columns, or data quality defects..."
+            />
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button onClick={() => setReworkModalTask(null)} className="px-3.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-slate-600 dark:text-zinc-400">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  reScrapingRequest(reworkModalTask.id, reworkRemarks);
+                  setReworkModalTask(null);
+                }}
+                className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs"
+              >
+                Submit Rework Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REASSIGN SCRAPER MODAL */}
+      {reassignModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  Reassign Task ({reassignModalTask.id})
+                </h3>
+              </div>
+              <button onClick={() => setReassignModalTask(null)} className="p-1 rounded text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
+              Reassign this extraction task to another engineer in the Core Scraping Engineering Pod.
+            </p>
+            <select
+              value={targetReassignScraper}
+              onChange={(e) => setTargetReassignScraper(e.target.value)}
+              className="w-full p-2.5 rounded-lg border border-border bg-card text-xs text-slate-800 dark:text-zinc-200 outline-none"
+            >
+              {scrapingEngineers.map((se) => (
+                <option key={se.id} value={se.name}>
+                  {se.name} ({se.workloadCapacity}% capacity)
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={reassignReasonText}
+              onChange={(e) => setReassignReasonText(e.target.value)}
+              placeholder="Reason for reassignment..."
+              className="w-full p-2.5 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs text-slate-800 dark:text-zinc-200 outline-none"
+            />
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button onClick={() => setReassignModalTask(null)} className="px-3.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-slate-600 dark:text-zinc-400">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  reassignTaskScraper(reassignModalTask.id, targetReassignScraper, reassignReasonText);
+                  setReassignModalTask(null);
+                }}
+                className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs"
+              >
+                Confirm Reassignment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPDATE SCRAPING PROGRESS MODAL */}
+      {progressModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                Update Scraping Progress ({progressModalTask.id})
+              </h3>
+              <button onClick={() => setProgressModalTask(null)} className="p-1 rounded text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="font-semibold text-slate-700 dark:text-zinc-300">Extraction Progress</span>
+                <span className="font-mono font-bold text-indigo-600">{progressValue}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={progressValue}
+                onChange={(e) => setProgressValue(Number(e.target.value))}
+                className="w-full accent-indigo-600"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Execution Milestone / State</label>
+              <input
+                type="text"
+                value={progressExecutionState}
+                onChange={(e) => setProgressExecutionState(e.target.value)}
+                className="w-full p-2.5 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs text-slate-800 dark:text-zinc-200 outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button onClick={() => setProgressModalTask(null)} className="px-3.5 py-1.5 rounded-lg border border-border text-xs font-semibold">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  updateTaskInternalProgress(progressModalTask.id, progressValue, progressExecutionState);
+                  setProgressModalTask(null);
+                }}
+                className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold"
+              >
+                Save Progress
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD SCRAPED FILE MODAL */}
+      {uploadModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <UploadCloud className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  Upload Scraped File & Submit QC ({uploadModalTask.id})
+                </h3>
+              </div>
+              <button onClick={() => setUploadModalTask(null)} className="p-1 rounded text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-center space-y-2">
+              <UploadCloud className="w-8 h-8 text-emerald-600 mx-auto" />
+              <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                {uploadedFileState ? uploadedFileState.name : 'Simulate Scraped Excel / CSV Output'}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {uploadedFileState ? `${uploadedFileState.size} • ${uploadedFileState.rows.toLocaleString()} SKUs` : 'Click to generate and attach extracted dataset'}
+              </p>
+              {!uploadedFileState && (
+                <button
+                  type="button"
+                  onClick={() => handleSimulateUploadFile(uploadModalTask)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold shadow-xs"
+                >
+                  Attach Output File
+                </button>
+              )}
+            </div>
+            {detectedCols.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Detected Columns ({detectedCols.length}):</span>
+                <div className="flex flex-wrap gap-1">
+                  {detectedCols.map((col) => (
+                    <span key={col} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300">
+                      {col}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button onClick={() => setUploadModalTask(null)} className="px-3.5 py-1.5 rounded-lg border border-border text-xs font-semibold">
+                Cancel
+              </button>
+              <button
+                disabled={!uploadedFileState}
+                onClick={() => {
+                  if (!uploadedFileState) return;
+                  uploadScrapedFile(uploadModalTask.id, uploadedFileState.name, uploadedFileState.size, uploadedFileState.rows);
+                  submitTaskForQC(uploadModalTask.id);
+                  try {
+                    confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+                  } catch {}
+                  setUploadModalTask(null);
+                  setUploadedFileState(null);
+                }}
+                className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-bold"
+              >
+                Upload & Submit for QC
               </button>
             </div>
           </div>

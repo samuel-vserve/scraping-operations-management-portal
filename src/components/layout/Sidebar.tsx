@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { isTaskAssociatedWithEmployee } from '../../types';
 import {
   LayoutDashboard,
   CheckSquare,
@@ -35,16 +36,26 @@ export const Sidebar: React.FC = () => {
     currentView,
     setCurrentView,
     currentUserRole,
+    currentEmployee,
     notifications,
     tasks,
   } = useApp();
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
+  // Scoped task list according to role & associated teams
+  const scopedTasks = useMemo(
+    () => tasks.filter((t) => isTaskAssociatedWithEmployee(t, currentEmployee, currentUserRole)),
+    [tasks, currentEmployee, currentUserRole]
+  );
+
   // Counts for badges
-  const awaitingQCCount = tasks.filter((t) => t.status === 'awaiting_manager_qc').length;
-  const reworkCount = tasks.filter((t) => t.status === 'rework_required').length;
+  const awaitingQCCount = scopedTasks.filter((t) => t.status === 'awaiting_manager_qc').length;
+  const reworkCount = scopedTasks.filter((t) => t.status === 'rework_required').length;
   const unreadNotifCount = notifications.filter((n) => !n.read).length;
+  const myAssignedTasksCount = tasks.filter(
+    (t) => t.primaryAssignee === currentEmployee.name || t.assignedEmployees.includes(currentEmployee.name)
+  ).length;
 
   interface NavItem {
     id: string;
@@ -65,17 +76,17 @@ export const Sidebar: React.FC = () => {
       title: 'OPERATIONS',
       items: [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
-        { id: 'my-tasks', label: 'My Tasks', icon: CheckSquare, badge: 3, roles: ['scraper'] },
+        { id: 'my-tasks', label: 'My Tasks', icon: CheckSquare, badge: myAssignedTasksCount || 3, roles: ['scraper'] },
         {
           id: 'all-tasks',
-          label: currentUserRole === 'production_user' ? 'My Created Tasks' : 'All Tasks',
+          label: currentUserRole === 'production_user' ? 'Associated Team Tasks' : currentUserRole === 'scraper' ? 'Assigned Tasks' : 'All Tasks',
           icon: ListTodo,
-          badge: tasks.length,
+          badge: scopedTasks.length,
           roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'],
         },
-        { id: 'projects', label: 'Projects', icon: FolderKanban, roles: ['manager', 'production_lead', 'production'] },
-        { id: 'teams', label: 'Teams & Pods', icon: Users, roles: ['manager', 'production_lead', 'production'] },
-        { id: 'team-members', label: 'Team Members', icon: UserCheck, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'projects', label: 'Projects', icon: FolderKanban, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
+        { id: 'teams', label: 'Teams & Pods', icon: Users, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
+        { id: 'team-members', label: 'Team Members', icon: UserCheck, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
         { id: 'guest-portal', label: 'Guest Portal', icon: UserPlus, roles: ['guest'] },
       ],
     },
@@ -94,7 +105,7 @@ export const Sidebar: React.FC = () => {
           id: 'production-qc',
           label: 'Production Deliverables',
           icon: Factory,
-          roles: ['manager', 'production_lead', 'production_user', 'production'],
+          roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'],
         },
         {
           id: 'rework-queue',
@@ -110,9 +121,9 @@ export const Sidebar: React.FC = () => {
       title: 'REPORTS',
       items: [
         { id: 'performance', label: 'Performance Analytics', icon: LineChart, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
-        { id: 'team-reports', label: 'Team Reports', icon: FileSpreadsheet, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'team-reports', label: 'Team Reports', icon: FileSpreadsheet, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
         { id: 'employee-reports', label: 'Employee Reports', icon: FileText, roles: ['manager'] },
-        { id: 'activity-logs', label: 'Activity Logs', icon: Activity, roles: ['manager', 'production_lead', 'production'] },
+        { id: 'activity-logs', label: 'Activity Logs', icon: Activity, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
       ],
     },
     {
@@ -127,7 +138,7 @@ export const Sidebar: React.FC = () => {
           roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper', 'guest'],
         },
         { id: 'email-history', label: 'Email History', icon: Mail, roles: ['manager'] },
-        { id: 'settings', label: 'Settings', icon: Settings, roles: ['manager', 'production_lead', 'production', 'scraper'] },
+        { id: 'settings', label: 'Settings', icon: Settings, roles: ['manager', 'production_lead', 'production_user', 'production', 'scraper'] },
         { id: 'user-management', label: 'User Management', icon: UserCheck, roles: ['manager'] },
       ],
     },
@@ -285,11 +296,13 @@ export const Sidebar: React.FC = () => {
                 <span className="font-semibold capitalize text-slate-800 dark:text-zinc-200">
                   {currentUserRole === 'guest'
                     ? 'Client Guest'
-                    : currentUserRole === 'production'
-                    ? 'Production QC'
+                    : currentUserRole === 'production_user'
+                    ? 'Production User'
+                    : currentUserRole === 'production' || currentUserRole === 'production_lead'
+                    ? 'Production Lead'
                     : currentUserRole === 'scraper'
-                    ? 'Scraping Dev'
-                    : 'Manager'}
+                    ? 'Scraping User'
+                    : 'Operations Manager'}
                 </span>
                 <span className="text-[10px] text-slate-400 block truncate">
                   {currentUserRole === 'manager' ? 'Full Access' : 'Scoped View'}

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { getEmployeeAssociatedTeams } from '../../types';
 import {
   CheckSquare,
   Upload,
@@ -37,17 +38,44 @@ export const MyTasksScraperView: React.FC = () => {
     setCurrentView,
     setSelectedTaskIdForQC,
     setInspectedTaskId,
+    currentEmployee,
+    currentUserRole: _currentUserRole,
   } = useApp();
 
-  // Engineer tasks (assigned to Karthik R or active scraping tasks)
-  const myTasks = tasks.filter(
-    (t) =>
-      t.assignedEmployees.includes('Karthik R') ||
-      t.primaryAssignee === 'Karthik R' ||
-      t.assignedTeam === 'Core Scraping Engineering Pod' ||
-      t.status === 'in_progress' ||
-      t.status === 'rework_required'
+  const [scopeFilter, setScopeFilter] = useState<'all_pod' | 'mine'>('all_pod');
+
+  // Associated scraping teams for the current employee (e.g. Core Scraping Engineering Pod)
+  const myScraperTeams = useMemo(
+    () => getEmployeeAssociatedTeams(currentEmployee),
+    [currentEmployee]
   );
+
+  // Engineer tasks (assigned directly to this employee or associated with their scraping pod)
+  const myTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      const isDirectlyAssigned =
+        t.primaryAssignee?.toLowerCase() === currentEmployee.name.toLowerCase() ||
+        t.assignedEmployees.some((e) => e.toLowerCase() === currentEmployee.name.toLowerCase());
+
+      const isAssociatedPod =
+        myScraperTeams.some((team) => team.toLowerCase() === t.assignedTeam?.toLowerCase()) ||
+        t.assignedTeam === 'Core Scraping Engineering Pod';
+
+      if (scopeFilter === 'mine') {
+        return isDirectlyAssigned;
+      }
+
+      return isDirectlyAssigned || isAssociatedPod;
+    });
+  }, [tasks, currentEmployee, myScraperTeams, scopeFilter]);
+
+  const assignedToMeCount = useMemo(() => {
+    return tasks.filter(
+      (t) =>
+        t.primaryAssignee?.toLowerCase() === currentEmployee.name.toLowerCase() ||
+        t.assignedEmployees.some((e) => e.toLowerCase() === currentEmployee.name.toLowerCase())
+    ).length;
+  }, [tasks, currentEmployee]);
 
   const [activeUploadTask, setActiveUploadTask] = useState<Task | null>(null);
   const [activeReassignTask, setActiveReassignTask] = useState<Task | null>(null);
@@ -69,10 +97,14 @@ export const MyTasksScraperView: React.FC = () => {
     return true;
   });
 
-  // Peer scrapers available in Core Scraping Engineering Pod
-  const peerScrapers = employees.filter(
-    (e) => e.team === 'Core Scraping Engineering Pod' && e.name !== 'Samuel P'
-  );
+  // Peer scrapers available in Core Scraping Engineering Pod or associated pods
+  const peerScrapers = useMemo(() => {
+    return employees.filter(
+      (e) =>
+        (e.team === 'Core Scraping Engineering Pod' || e.role.toLowerCase().includes('scraping')) &&
+        e.name !== currentEmployee.name
+    );
+  }, [employees, currentEmployee]);
 
   const handleSimulateFileSelect = (task: Task) => {
     const isRework = task.status === 'rework_required';
@@ -146,49 +178,72 @@ export const MyTasksScraperView: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
             <span className="text-xs font-mono font-bold text-slate-900 dark:text-zinc-100">
-              Karthik R (Lead Scraper)
+              {currentEmployee.name} ({currentEmployee.designation || 'Scraping Engineer'})
             </span>
             <span className="text-[11px] text-slate-400 block font-mono">
-              Workload Capacity: 90% (3 Active)
+              Pod: {currentEmployee.team} • Load: {currentEmployee.workloadCapacity}%
             </span>
           </div>
           <img
-            src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80"
-            alt="Karthik R"
-            className="w-9 h-9 rounded-full ring-2 ring-emerald-500"
+            src={currentEmployee.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80"}
+            alt={currentEmployee.name}
+            className="w-9 h-9 rounded-full ring-2 ring-emerald-500 object-cover"
           />
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-border space-x-6 text-xs font-semibold text-slate-500">
-        {[
-          { id: 'all', label: 'All My Tasks', count: myTasks.length },
-          { id: 'in_progress', label: 'In Extraction', count: myTasks.filter((t) => t.status === 'in_progress').length },
-          { id: 'rework', label: 'Rework Queue', count: myTasks.filter((t) => t.status === 'rework_required').length },
-          { id: 'awaiting_qc', label: 'Awaiting Manager QC', count: myTasks.filter((t) => t.status === 'awaiting_manager_qc').length },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`flex items-center gap-2 pb-3 relative transition-colors ${
-              activeTab === tab.id
-                ? 'text-indigo-600 dark:text-indigo-400 font-bold border-b-2 border-indigo-600 dark:border-indigo-400'
-                : 'hover:text-slate-900 dark:hover:text-zinc-200'
-            }`}
-          >
-            <span>{tab.label}</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+      {/* Pod Scope Toggle & Status Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-1">
+        <div className="flex space-x-6 text-xs font-semibold text-slate-500 overflow-x-auto">
+          {[
+            { id: 'all', label: scopeFilter === 'mine' ? 'My Tasks' : 'All Pod Tasks', count: myTasks.length },
+            { id: 'in_progress', label: 'In Extraction', count: myTasks.filter((t) => t.status === 'in_progress').length },
+            { id: 'rework', label: 'Rework Queue', count: myTasks.filter((t) => t.status === 'rework_required').length },
+            { id: 'awaiting_qc', label: 'Awaiting Manager QC', count: myTasks.filter((t) => t.status === 'awaiting_manager_qc').length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`flex items-center gap-2 pb-3 relative transition-colors shrink-0 ${
                 activeTab === tab.id
-                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                  : 'bg-slate-100 dark:bg-zinc-800 text-slate-500'
+                  ? 'text-indigo-600 dark:text-indigo-400 font-bold border-b-2 border-indigo-600 dark:border-indigo-400'
+                  : 'hover:text-slate-900 dark:hover:text-zinc-200'
               }`}
             >
-              {tab.count}
+              <span>{tab.label}</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400">
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Scope Pill Toggle: All Pod vs Assigned to Me */}
+        <div className="flex items-center p-1 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs font-semibold self-start sm:self-auto mb-2 sm:mb-0">
+          <button
+            onClick={() => setScopeFilter('all_pod')}
+            className={`px-2.5 py-1 rounded-md transition-colors ${
+              scopeFilter === 'all_pod'
+                ? 'bg-card text-slate-900 dark:text-zinc-100 shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-200'
+            }`}
+          >
+            All Pod Tasks
+          </button>
+          <button
+            onClick={() => setScopeFilter('mine')}
+            className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+              scopeFilter === 'mine'
+                ? 'bg-card text-slate-900 dark:text-zinc-100 shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-200'
+            }`}
+          >
+            <span>Assigned to Me</span>
+            <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+              {assignedToMeCount}
             </span>
           </button>
-        ))}
+        </div>
       </div>
 
       {/* Tasks List */}

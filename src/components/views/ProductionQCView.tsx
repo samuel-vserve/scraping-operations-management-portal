@@ -21,13 +21,14 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from '../common/StatusBadge';
 import { PriorityBadge } from '../common/PriorityBadge';
-import { Task } from '../../types';
+import { Task, isTaskAssociatedWithEmployee, getEmployeeAssociatedTeams } from '../../types';
 import confetti from 'canvas-confetti';
 
 export const ProductionQCView: React.FC = () => {
   const {
     tasks,
     currentUserRole,
+    currentEmployee,
     approveProduction,
     rejectProduction,
     downloadScrapedFile,
@@ -42,18 +43,17 @@ export const ProductionQCView: React.FC = () => {
   const [productionRemarks, setProductionRemarks] = useState<string>('');
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('all');
 
-  // Filter tasks based on role and team
+  const associatedTeams = getEmployeeAssociatedTeams(currentEmployee);
+
+  // Filter tasks based on role and associated teams
   const scopedTasks = tasks.filter((t) => {
-    if (currentUserRole === 'production_user') {
-      const isMine =
-        t.productionUser === 'Divya Murugan' ||
-        t.createdBy === 'Divya Murugan' ||
-        t.id === 'TSK-1048' ||
-        t.id === 'TSK-1049';
-      if (!isMine) return false;
-    }
-    if (selectedTeamFilter !== 'all' && t.productionTeam !== selectedTeamFilter) {
-      return false;
+    const isAssociated = isTaskAssociatedWithEmployee(t, currentEmployee, currentUserRole);
+    if (!isAssociated) return false;
+
+    if (selectedTeamFilter !== 'all') {
+      const matchProd = t.productionTeam?.toLowerCase() === selectedTeamFilter.toLowerCase();
+      const matchAssigned = t.assignedTeam?.toLowerCase() === selectedTeamFilter.toLowerCase();
+      if (!matchProd && !matchAssigned) return false;
     }
     return true;
   });
@@ -118,19 +118,28 @@ export const ProductionQCView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {currentUserRole !== 'production_user' && (
-            <select
-              value={selectedTeamFilter}
-              onChange={(e) => setSelectedTeamFilter(e.target.value)}
-              className="text-xs font-semibold px-2.5 py-2 rounded-lg border border-border bg-card text-slate-700 dark:text-zinc-300"
-            >
-              <option value="all">All Production Teams</option>
-              <option value="Lawson Production Team">Lawson Production Team</option>
-              <option value="Surya Production Team">Surya Production Team</option>
-              <option value="DTS Automation Team">DTS Automation Team</option>
-              <option value="Altius Enterprise Team">Altius Enterprise Team</option>
-            </select>
-          )}
+          <select
+            value={selectedTeamFilter}
+            onChange={(e) => setSelectedTeamFilter(e.target.value)}
+            className="text-xs font-semibold px-2.5 py-2 rounded-lg border border-border bg-card text-slate-700 dark:text-zinc-300"
+          >
+            <option value="all">
+              {currentUserRole === 'production_user' ? 'All Associated Pods' : 'All Production Teams'}
+            </option>
+            {(currentUserRole === 'production_user' && associatedTeams.length > 0
+              ? associatedTeams
+              : [
+                  'Lawson Production Team',
+                  'Surya Production Team',
+                  'DTS Automation Team',
+                  'Altius Enterprise Team',
+                ]
+            ).map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
 
           <button
             onClick={() => setIsCreateTaskModalOpen(true)}

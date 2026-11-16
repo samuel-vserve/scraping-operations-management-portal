@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Users,
@@ -21,19 +21,26 @@ import {
   Check,
   Zap,
 } from 'lucide-react';
-import { Team, Employee } from '../../types';
+import { Team, Employee, getEmployeeAssociatedTeams } from '../../types';
 
 interface TeamsViewProps {
   defaultTab?: 'teams' | 'members';
 }
 
 export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) => {
-  const { teams, employees, tasks, updateUserTeam, updateUserTeams } = useApp();
+  const { teams, employees, tasks, updateUserTeam, updateUserTeams, currentUserRole, currentEmployee } = useApp();
 
   const [activeTab, setActiveTab] = useState<'teams' | 'members'>(defaultTab);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [employeeSearch, setEmployeeSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'scraping' | 'production'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'scraping' | 'production' | 'associated'>('all');
+  const [podFilterMode, setPodFilterMode] = useState<'all' | 'my_pods'>('all');
+
+  // Multi-team awareness
+  const associatedTeams = useMemo(
+    () => getEmployeeAssociatedTeams(currentEmployee),
+    [currentEmployee]
+  );
 
   // Edit user team assignment modal
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -46,6 +53,20 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
   // Multiple Production Teams
   const productionTeams = teams.filter((t) => t.teamType === 'production' || !t.name.includes('Scraping'));
 
+  // Filtered production teams based on podFilterMode
+  const displayedProductionTeams = useMemo(() => {
+    if (podFilterMode === 'my_pods' && associatedTeams.length > 0) {
+      return productionTeams.filter((pt) =>
+        associatedTeams.some(
+          (at) =>
+            at.toLowerCase().includes(pt.name.toLowerCase()) ||
+            pt.name.toLowerCase().includes(at.toLowerCase())
+        )
+      );
+    }
+    return productionTeams;
+  }, [productionTeams, podFilterMode, associatedTeams]);
+
   const filteredEmployees = employees.filter((emp) => {
     const matchSearch =
       emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
@@ -54,10 +75,23 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
       emp.designation.toLowerCase().includes(employeeSearch.toLowerCase());
 
     const isScraper = emp.team === 'Core Scraping Engineering Pod' || emp.role.toLowerCase().includes('scraping');
-    const matchRole =
-      roleFilter === 'all' ? true : roleFilter === 'scraping' ? isScraper : !isScraper;
-
     const empTeams = emp.assignedTeams && emp.assignedTeams.length > 0 ? emp.assignedTeams : [emp.team];
+
+    const matchRole =
+      roleFilter === 'all'
+        ? true
+        : roleFilter === 'scraping'
+        ? isScraper
+        : roleFilter === 'production'
+        ? !isScraper
+        : empTeams.some((t) =>
+            associatedTeams.some(
+              (at) =>
+                at.toLowerCase().includes(t.toLowerCase()) ||
+                t.toLowerCase().includes(at.toLowerCase())
+            )
+          );
+
     const matchTeam =
       !selectedTeam ||
       empTeams.some(
@@ -168,6 +202,12 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-mono font-bold">
                   {scrapingTeam.productivity}% Efficiency
                 </span>
+                {(currentUserRole === 'scraper' || associatedTeams.some((at) => at.toLowerCase().includes('scraping') || at.toLowerCase().includes('core'))) && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Your Active Scraping Pod
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 max-w-2xl">
                 Dedicated technical extraction team responsible for DOM parsing, anti-bot mitigation (Cloudflare/Akamai), proxy pool rotation, and automated Schema Pre-Flight Diff uploads.
@@ -230,7 +270,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
 
       {/* SECTION 2: MULTIPLE PRODUCTION TEAMS */}
       <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600">
               <Factory className="w-4 h-4" />
@@ -242,11 +282,42 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
               Client & Catalog Handoff
             </span>
           </div>
+
+          <div className="flex items-center gap-1.5 p-1 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs font-semibold">
+            <button
+              onClick={() => setPodFilterMode('all')}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                podFilterMode === 'all'
+                  ? 'bg-card text-slate-900 dark:text-zinc-100 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100'
+              }`}
+            >
+              All Pods ({productionTeams.length})
+            </button>
+            <button
+              onClick={() => setPodFilterMode('my_pods')}
+              className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${
+                podFilterMode === 'my_pods'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100'
+              }`}
+            >
+              <span>My Associated Pods</span>
+              <span className="text-[10px] opacity-80">
+                ({displayedProductionTeams.length})
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {productionTeams.map((team) => {
+          {displayedProductionTeams.map((team) => {
             const isSelected = selectedTeam?.id === team.id;
+            const isMyPod = associatedTeams.some(
+              (at) =>
+                at.toLowerCase().includes(team.name.toLowerCase()) ||
+                team.name.toLowerCase().includes(at.toLowerCase())
+            );
             const teamMembers = employees.filter((e) => {
               const empTeams = e.assignedTeams && e.assignedTeams.length > 0 ? e.assignedTeams : [e.team];
               return empTeams.some(
@@ -281,9 +352,17 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
                         <span className="truncate">Lead: {team.leader}</span>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-mono font-bold border border-blue-200">
-                      {team.productivity}% Prod
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-mono font-bold border border-blue-200">
+                        {team.productivity}% Prod
+                      </span>
+                      {isMyPod && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Associated
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs py-2 border-y border-border/60 font-mono mb-3">
@@ -358,7 +437,8 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
               onChange={(e) => setRoleFilter(e.target.value as any)}
               className="px-2.5 py-1.5 rounded-lg border border-border bg-card text-xs text-slate-700 dark:text-zinc-300 outline-none"
             >
-              <option value="all">All Roles</option>
+              <option value="all">All Roles & Pods</option>
+              <option value="associated">My Associated Pod Members Only</option>
               <option value="scraping">Scraping Engineers (Core Pod)</option>
               <option value="production">Production Specialists</option>
             </select>
