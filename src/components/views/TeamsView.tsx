@@ -55,6 +55,15 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
 
   // Filtered production teams based on podFilterMode
   const displayedProductionTeams = useMemo(() => {
+    if (currentUserRole === 'production_lead' && associatedTeams.length > 0) {
+      return productionTeams.filter((pt) =>
+        associatedTeams.some(
+          (at) =>
+            at.toLowerCase().includes(pt.name.toLowerCase()) ||
+            pt.name.toLowerCase().includes(at.toLowerCase())
+        )
+      );
+    }
     if (podFilterMode === 'my_pods' && associatedTeams.length > 0) {
       return productionTeams.filter((pt) =>
         associatedTeams.some(
@@ -65,7 +74,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
       );
     }
     return productionTeams;
-  }, [productionTeams, podFilterMode, associatedTeams]);
+  }, [productionTeams, podFilterMode, associatedTeams, currentUserRole]);
 
   const filteredEmployees = employees.filter((emp) => {
     const matchSearch =
@@ -76,6 +85,18 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
 
     const isScraper = emp.team === 'Core Scraping Engineering Pod' || emp.role.toLowerCase().includes('scraping');
     const empTeams = emp.assignedTeams && emp.assignedTeams.length > 0 ? emp.assignedTeams : [emp.team];
+
+    // For Production Lead: strictly only members of their assigned production team(s), never scraping pod
+    if (currentUserRole === 'production_lead') {
+      const belongsToMyTeam = empTeams.some((t) =>
+        associatedTeams.some(
+          (at) =>
+            at.toLowerCase().includes(t.toLowerCase()) ||
+            t.toLowerCase().includes(at.toLowerCase())
+        )
+      );
+      if (!belongsToMyTeam || isScraper) return false;
+    }
 
     const matchRole =
       roleFilter === 'all'
@@ -120,14 +141,20 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                Team Governance & Workforce Allocation
+                {currentUserRole === 'production_lead'
+                  ? `${associatedTeams[0] || 'Production Pod'} Management`
+                  : 'Team Governance & Workforce Allocation'}
               </h1>
               <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200">
-                1 Scraping Pod • 4 Production Pods
+                {currentUserRole === 'production_lead'
+                  ? `${associatedTeams[0] || '1 Production Pod'}`
+                  : '1 Scraping Pod • 4 Production Pods'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              Single unified <strong>Scraping Engineering Pod</strong> handles extraction; multiple <strong>Production Teams</strong> manage client catalogs, stats, and deliverables.
+              {currentUserRole === 'production_lead'
+                ? `Manage assigned specialists and catalog deliveries for ${associatedTeams[0] || 'your production pod'}.`
+                : 'Single unified Scraping Engineering Pod handles extraction; multiple Production Teams manage client catalogs, stats, and deliverables.'}
             </p>
           </div>
         </div>
@@ -172,145 +199,151 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
 
       {activeTab === 'teams' && (
         <>
-          {/* SECTION 1: THE CORE SCRAPING ENGINEERING POD (1 DEDICATED TEAM) */}
-          <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600">
-              <Terminal className="w-4 h-4" />
-            </div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-              Scraping Engineering Pod (1 Central Team)
-            </h2>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold border border-emerald-200">
-              Extraction Engine
-            </span>
-          </div>
-
-          <span className="text-xs text-slate-500">
-            Lead: <strong>{scrapingTeam.leader}</strong> • {scrapingTeam.members.length} Engineers
-          </span>
-        </div>
-
-        <div className="p-5 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/50 bg-gradient-to-r from-emerald-50/50 via-card to-card shadow-subtle space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                  {scrapingTeam.name}
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-mono font-bold">
-                  {scrapingTeam.productivity}% Efficiency
-                </span>
-                {(currentUserRole === 'scraper' || associatedTeams.some((at) => at.toLowerCase().includes('scraping') || at.toLowerCase().includes('core'))) && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Your Active Scraping Pod
+          {/* SECTION 1: THE CORE SCRAPING ENGINEERING POD (1 DEDICATED TEAM) - HIDDEN FOR PRODUCTION LEAD */}
+          {currentUserRole !== 'production_lead' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600">
+                    <Terminal className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                    Scraping Engineering Pod (1 Central Team)
+                  </h2>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold border border-emerald-200">
+                    Extraction Engine
                   </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 max-w-2xl">
-                Dedicated technical extraction team responsible for DOM parsing, anti-bot mitigation (Cloudflare/Akamai), proxy pool rotation, and automated Schema Pre-Flight Diff uploads.
-              </p>
-            </div>
+                </div>
 
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="text-center p-2.5 rounded-xl border border-border bg-card min-w-[85px]">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Active</p>
-                <p className="text-lg font-mono font-bold text-slate-900 dark:text-zinc-100">{scrapingTeam.activeTasks}</p>
+                <span className="text-xs text-slate-500">
+                  Lead: <strong>{scrapingTeam.leader}</strong> • {scrapingTeam.members.length} Engineers
+                </span>
               </div>
-              <div className="text-center p-2.5 rounded-xl border border-border bg-card min-w-[85px]">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Completed</p>
-                <p className="text-lg font-mono font-bold text-emerald-600">{scrapingTeam.completedTasks}</p>
-              </div>
-              <div className="text-center p-2.5 rounded-xl border border-border bg-card min-w-[85px]">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Velocity</p>
-                <p className="text-lg font-mono font-bold text-indigo-600">{scrapingTeam.completionRate}%</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Members of Scraping Pod */}
-          <div className="pt-3 border-t border-border/60">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-              Pod Scraping Engineers:
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {employees
-                .filter((e) => e.team === 'Core Scraping Engineering Pod')
-                .map((emp) => (
-                  <div
-                    key={emp.id}
-                    className="p-3 rounded-xl border border-border bg-card/80 flex items-center justify-between gap-2 shadow-xs"
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-emerald-500/50" />
-                      <div className="truncate">
-                        <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate block">
-                          {emp.name}
-                        </span>
-                        <span className="text-[10px] text-slate-400 truncate block">
-                          {emp.designation}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className={`text-[10px] font-mono font-bold ${
-                        emp.workloadCapacity >= 85 ? 'text-rose-600' : 'text-emerald-600'
-                      }`}>
-                        {emp.workloadCapacity}% Load
+              <div className="p-5 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/50 bg-gradient-to-r from-emerald-50/50 via-card to-card shadow-subtle space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                        {scrapingTeam.name}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-mono font-bold">
+                        {scrapingTeam.productivity}% Efficiency
                       </span>
+                      {(currentUserRole === 'scraper' || associatedTeams.some((at) => at.toLowerCase().includes('scraping') || at.toLowerCase().includes('core'))) && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Your Active Scraping Pod
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 max-w-2xl">
+                      Dedicated technical extraction team responsible for DOM parsing, anti-bot mitigation (Cloudflare/Akamai), proxy pool rotation, and automated Schema Pre-Flight Diff uploads.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-center p-2.5 rounded-xl border border-border bg-card min-w-[85px]">
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">Active</p>
+                      <p className="text-lg font-mono font-bold text-slate-900 dark:text-zinc-100">{scrapingTeam.activeTasks}</p>
+                    </div>
+                    <div className="text-center p-2.5 rounded-xl border border-border bg-card min-w-[85px]">
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">Completed</p>
+                      <p className="text-lg font-mono font-bold text-emerald-600">{scrapingTeam.completedTasks}</p>
+                    </div>
+                    <div className="text-center p-2.5 rounded-xl border border-border bg-card min-w-[85px]">
+                      <p className="text-[10px] text-slate-400 uppercase font-bold">Velocity</p>
+                      <p className="text-lg font-mono font-bold text-indigo-600">{scrapingTeam.completionRate}%</p>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Members of Scraping Pod */}
+                <div className="pt-3 border-t border-border/60">
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+                    Pod Scraping Engineers:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {employees
+                      .filter((e) => e.team === 'Core Scraping Engineering Pod')
+                      .map((emp) => (
+                        <div
+                          key={emp.id}
+                          className="p-3 rounded-xl border border-border bg-card/80 flex items-center justify-between gap-2 shadow-xs"
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-emerald-500/50" />
+                            <div className="truncate">
+                              <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate block">
+                                {emp.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 truncate block">
+                                {emp.designation}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className={`text-[10px] font-mono font-bold ${
+                              emp.workloadCapacity >= 85 ? 'text-rose-600' : 'text-emerald-600'
+                            }`}>
+                              {emp.workloadCapacity}% Load
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
+          )}
 
-      {/* SECTION 2: MULTIPLE PRODUCTION TEAMS */}
-      <div className="space-y-3 pt-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600">
-              <Factory className="w-4 h-4" />
+          {/* SECTION 2: PRODUCTION TEAMS */}
+          <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600">
+                  <Factory className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  {currentUserRole === 'production_lead'
+                    ? `Your Production Pod (${displayedProductionTeams[0]?.name || 'Assigned Pod'})`
+                    : `Production Teams (${productionTeams.length} Account Pods)`}
+                </h2>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold border border-blue-200">
+                  Client & Catalog Handoff
+                </span>
+              </div>
+
+              {currentUserRole !== 'production_lead' && (
+                <div className="flex items-center gap-1.5 p-1 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs font-semibold">
+                  <button
+                    onClick={() => setPodFilterMode('all')}
+                    className={`px-2.5 py-1 rounded-md transition-colors ${
+                      podFilterMode === 'all'
+                        ? 'bg-card text-slate-900 dark:text-zinc-100 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100'
+                    }`}
+                  >
+                    All Pods ({productionTeams.length})
+                  </button>
+                  <button
+                    onClick={() => setPodFilterMode('my_pods')}
+                    className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${
+                      podFilterMode === 'my_pods'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100'
+                    }`}
+                  >
+                    <span>My Associated Pods</span>
+                    <span className="text-[10px] opacity-80">
+                      ({displayedProductionTeams.length})
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-              Production Teams ({productionTeams.length} Account Pods)
-            </h2>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold border border-blue-200">
-              Client & Catalog Handoff
-            </span>
-          </div>
 
-          <div className="flex items-center gap-1.5 p-1 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs font-semibold">
-            <button
-              onClick={() => setPodFilterMode('all')}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
-                podFilterMode === 'all'
-                  ? 'bg-card text-slate-900 dark:text-zinc-100 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100'
-              }`}
-            >
-              All Pods ({productionTeams.length})
-            </button>
-            <button
-              onClick={() => setPodFilterMode('my_pods')}
-              className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${
-                podFilterMode === 'my_pods'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100'
-              }`}
-            >
-              <span>My Associated Pods</span>
-              <span className="text-[10px] opacity-80">
-                ({displayedProductionTeams.length})
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {displayedProductionTeams.map((team) => {
             const isSelected = selectedTeam?.id === team.id;
             const isMyPod = associatedTeams.some(
@@ -477,17 +510,19 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setEditingEmployee(emp);
-                      setTargetTeam(emp.team);
-                      setTargetTeams(emp.assignedTeams && emp.assignedTeams.length > 0 ? emp.assignedTeams : [emp.team]);
-                    }}
-                    className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
-                    title="Change Team Assignment"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
+                  {currentUserRole === 'manager' && (
+                    <button
+                      onClick={() => {
+                        setEditingEmployee(emp);
+                        setTargetTeam(emp.team);
+                        setTargetTeams(emp.assignedTeams && emp.assignedTeams.length > 0 ? emp.assignedTeams : [emp.team]);
+                      }}
+                      className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                      title="Change Team Assignment"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-1.5 text-xs font-mono pt-2 border-t border-border">

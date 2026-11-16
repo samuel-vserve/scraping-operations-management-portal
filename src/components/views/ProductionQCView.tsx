@@ -124,9 +124,9 @@ export const ProductionQCView: React.FC = () => {
             className="text-xs font-semibold px-2.5 py-2 rounded-lg border border-border bg-card text-slate-700 dark:text-zinc-300"
           >
             <option value="all">
-              {currentUserRole === 'production_user' ? 'All Associated Pods' : 'All Production Teams'}
+              {currentUserRole === 'production_user' || currentUserRole === 'production_lead' ? 'Your Assigned Team' : 'All Production Teams'}
             </option>
-            {(currentUserRole === 'production_user' && associatedTeams.length > 0
+            {((currentUserRole === 'production_user' || currentUserRole === 'production_lead') && associatedTeams.length > 0
               ? associatedTeams
               : [
                   'Lawson Production Team',

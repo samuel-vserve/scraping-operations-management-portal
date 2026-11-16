@@ -17,7 +17,7 @@ export const ProjectsView: React.FC = () => {
   const { projects, tasks, setCurrentView, setInspectedProjectId, currentUserRole, currentEmployee } = useApp();
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<'all' | 'associated'>(
-    currentUserRole === 'production_user' || currentUserRole === 'scraper' ? 'associated' : 'all'
+    currentUserRole === 'production_user' || currentUserRole === 'scraper' || currentUserRole === 'production_lead' ? 'associated' : 'all'
   );
 
   const associatedTeams = useMemo(
@@ -40,7 +40,7 @@ export const ProjectsView: React.FC = () => {
 
     if (!matchSearch) return false;
 
-    if (scopeFilter === 'associated' && (currentUserRole === 'production_user' || currentUserRole === 'scraper')) {
+    if (currentUserRole === 'production_lead' || (scopeFilter === 'associated' && (currentUserRole === 'production_user' || currentUserRole === 'scraper'))) {
       const pTasks = tasks.filter((t) => t.projectId === p.id);
       const isAssociated = pTasks.some((t) => isTaskAssociatedWithEmployee(t, currentEmployee, currentUserRole));
       if (!isAssociated) return false;

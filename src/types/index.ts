@@ -240,13 +240,14 @@ export const isTaskAssociatedWithEmployee = (
     if (task.productionTeam && associatedTeams.some((t) => teamMatches(t, task.productionTeam))) {
       return true;
     }
-    // 4. In case assignedTeam matches
-    if (task.assignedTeam && associatedTeams.some((t) => teamMatches(t, task.assignedTeam))) {
+    // 4. In case assignedTeam matches their production team (never match scraping engineering pod)
+    if (
+      task.assignedTeam &&
+      !task.assignedTeam.toLowerCase().includes('scraping') &&
+      !task.assignedTeam.toLowerCase().includes('core') &&
+      associatedTeams.some((t) => teamMatches(t, task.assignedTeam))
+    ) {
       return true;
-    }
-    // 5. Special fallback for initial demo tasks associated with Lawson/Surya production
-    if (task.id === 'TSK-1048' || task.id === 'TSK-1049' || task.id === 'TSK-1050' || task.id === 'TSK-1053') {
-      if (associatedTeams.some((t) => t.includes('Lawson') || t.includes('Surya'))) return true;
     }
     return false;
   }

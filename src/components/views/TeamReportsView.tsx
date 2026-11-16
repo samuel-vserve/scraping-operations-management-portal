@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { getEmployeeAssociatedTeams } from '../../types';
 import {
   FileSpreadsheet,
   Users,
@@ -28,7 +29,12 @@ import {
 } from 'recharts';
 
 export const TeamReportsView: React.FC = () => {
-  const { teams, tasks, employees } = useApp();
+  const { teams, tasks, employees, currentUserRole, currentEmployee } = useApp();
+
+  const associatedTeams = useMemo(
+    () => getEmployeeAssociatedTeams(currentEmployee),
+    [currentEmployee]
+  );
 
   const [selectedPodType, setSelectedPodType] = useState<'all' | 'scraping' | 'production'>('all');
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('all');
@@ -41,6 +47,22 @@ export const TeamReportsView: React.FC = () => {
     { team: 'Surya Prod', deliveredSkus: 118000, activeTasks: 3, qcPassRate: 92.8, avgCycleHours: 5.6 },
     { team: 'Altius Enterprise', deliveredSkus: 88000, activeTasks: 2, qcPassRate: 89.6, avgCycleHours: 6.2 },
   ];
+
+  // Scoped pod production data strictly to role and associated team
+  const scopedPodProductionData = useMemo(() => {
+    if (currentUserRole === 'production_lead' && associatedTeams.length > 0) {
+      return podProductionData.filter((p) =>
+        associatedTeams.some(
+          (at) =>
+            at.toLowerCase().includes('lawson') && p.team.includes('Lawson') ||
+            at.toLowerCase().includes('dts') && p.team.includes('DTS') ||
+            at.toLowerCase().includes('surya') && p.team.includes('Surya') ||
+            at.toLowerCase().includes('altius') && p.team.includes('Altius')
+        )
+      );
+    }
+    return podProductionData;
+  }, [podProductionData, currentUserRole, associatedTeams]);
 
   // Monthly output trend by pod
   const monthlyPodOutput = [
@@ -82,14 +104,20 @@ export const TeamReportsView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-                Team & Pod Operational Reports
+                {currentUserRole === 'production_lead'
+                  ? `${associatedTeams[0] || 'Production Pod'} Operational Report`
+                  : 'Team & Pod Operational Reports'}
               </h1>
               <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200">
-                1 Scraping Pod • 4 Production Teams
+                {currentUserRole === 'production_lead'
+                  ? `${associatedTeams[0] || '1 Production Pod'}`
+                  : '1 Scraping Pod • 4 Production Teams'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              Comparative productivity, delivery cadence, and quality index across technical extraction and production operations.
+              {currentUserRole === 'production_lead'
+                ? `Operational cadence, delivery accuracy, and SKU volume for ${associatedTeams[0] || 'your production team'}.`
+                : 'Comparative productivity, delivery cadence, and quality index across technical extraction and production operations.'}
             </p>
           </div>
         </div>
@@ -113,136 +141,146 @@ export const TeamReportsView: React.FC = () => {
       </div>
 
       {/* Pod Breakdown Highlights Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Core Scraping Pod Card */}
-        <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-gradient-to-br from-emerald-50/60 to-card shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                Technical Engine
-              </span>
-              <Terminal className="w-4 h-4 text-emerald-600" />
+      <div className={`grid grid-cols-1 ${currentUserRole === 'production_lead' ? 'max-w-md' : 'md:grid-cols-2 lg:grid-cols-5'} gap-4`}>
+        {/* Core Scraping Pod Card - Only for Managers */}
+        {currentUserRole === 'manager' && (
+          <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-gradient-to-br from-emerald-50/60 to-card shadow-subtle flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  Technical Engine
+                </span>
+                <Terminal className="w-4 h-4 text-emerald-600" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
+                Scraping Engineering
+              </h3>
+              <p className="text-xs text-slate-500">Lead: Karthik R</p>
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
-              Scraping Engineering
-            </h3>
-            <p className="text-xs text-slate-500">Lead: Karthik R</p>
+            <div className="mt-4 pt-3 border-t border-emerald-100 dark:border-emerald-900/40">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500">Total Output</span>
+                <span className="text-base font-bold font-mono text-emerald-600">412k SKUs</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-1 text-xs">
+                <span className="text-slate-400">QC Pass</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">98.4%</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-emerald-100 dark:border-emerald-900/40">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-slate-500">Total Output</span>
-              <span className="text-base font-bold font-mono text-emerald-600">412k SKUs</span>
-            </div>
-            <div className="flex items-baseline justify-between mt-1 text-xs">
-              <span className="text-slate-400">QC Pass</span>
-              <span className="font-semibold text-slate-800 dark:text-zinc-200">98.4%</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Lawson Production */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                Production Pod 1
-              </span>
-              <Factory className="w-4 h-4 text-indigo-600" />
+        {(currentUserRole === 'manager' || associatedTeams.some((at) => at.includes('Lawson'))) && (
+          <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                  Production Pod 1
+                </span>
+                <Factory className="w-4 h-4 text-indigo-600" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
+                Lawson Team
+              </h3>
+              <p className="text-xs text-slate-500">Lead: Priya Nair</p>
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
-              Lawson Team
-            </h3>
-            <p className="text-xs text-slate-500">Lead: Samuel P</p>
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500">Delivered</span>
+                <span className="text-base font-bold font-mono text-indigo-600">194k SKUs</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-1 text-xs">
+                <span className="text-slate-400">Accuracy</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">98.2%</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-border">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-slate-500">Delivered</span>
-              <span className="text-base font-bold font-mono text-indigo-600">194k SKUs</span>
-            </div>
-            <div className="flex items-baseline justify-between mt-1 text-xs">
-              <span className="text-slate-400">Accuracy</span>
-              <span className="font-semibold text-slate-800 dark:text-zinc-200">98.2%</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* DTS Automation */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                Production Pod 2
-              </span>
-              <Factory className="w-4 h-4 text-blue-600" />
+        {(currentUserRole === 'manager' || associatedTeams.some((at) => at.includes('DTS'))) && (
+          <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                  Production Pod 2
+                </span>
+                <Factory className="w-4 h-4 text-blue-600" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
+                DTS Automation
+              </h3>
+              <p className="text-xs text-slate-500">Lead: David Chen</p>
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
-              DTS Automation
-            </h3>
-            <p className="text-xs text-slate-500">Lead: Priya Nair</p>
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500">Delivered</span>
+                <span className="text-base font-bold font-mono text-blue-600">142k SKUs</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-1 text-xs">
+                <span className="text-slate-400">Accuracy</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">97.4%</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-border">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-slate-500">Delivered</span>
-              <span className="text-base font-bold font-mono text-blue-600">142k SKUs</span>
-            </div>
-            <div className="flex items-baseline justify-between mt-1 text-xs">
-              <span className="text-slate-400">Accuracy</span>
-              <span className="font-semibold text-slate-800 dark:text-zinc-200">97.4%</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Surya Team */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                Production Pod 3
-              </span>
-              <Factory className="w-4 h-4 text-amber-600" />
+        {(currentUserRole === 'manager' || associatedTeams.some((at) => at.includes('Surya'))) && (
+          <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  Production Pod 3
+                </span>
+                <Factory className="w-4 h-4 text-amber-600" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
+                Surya Team
+              </h3>
+              <p className="text-xs text-slate-500">Lead: Surya Prakash</p>
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
-              Surya Team
-            </h3>
-            <p className="text-xs text-slate-500">Lead: Surya Prakash</p>
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500">Delivered</span>
+                <span className="text-base font-bold font-mono text-amber-600">118k SKUs</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-1 text-xs">
+                <span className="text-slate-400">Accuracy</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">92.8%</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-border">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-slate-500">Delivered</span>
-              <span className="text-base font-bold font-mono text-amber-600">118k SKUs</span>
-            </div>
-            <div className="flex items-baseline justify-between mt-1 text-xs">
-              <span className="text-slate-400">Accuracy</span>
-              <span className="font-semibold text-slate-800 dark:text-zinc-200">92.8%</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Altius Enterprise */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-                Production Pod 4
-              </span>
-              <Factory className="w-4 h-4 text-rose-600" />
+        {(currentUserRole === 'manager' || associatedTeams.some((at) => at.includes('Altius'))) && (
+          <div className="p-4 rounded-xl border border-border bg-card shadow-subtle flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                  Production Pod 4
+                </span>
+                <Factory className="w-4 h-4 text-rose-600" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
+                Altius Enterprise
+              </h3>
+              <p className="text-xs text-slate-500">Lead: Arun Kumar</p>
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-2">
-              Altius Enterprise
-            </h3>
-            <p className="text-xs text-slate-500">Lead: Arun Kumar</p>
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500">Delivered</span>
+                <span className="text-base font-bold font-mono text-rose-600">88k SKUs</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-1 text-xs">
+                <span className="text-slate-400">Accuracy</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">89.6%</span>
+              </div>
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-border">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-slate-500">Delivered</span>
-              <span className="text-base font-bold font-mono text-rose-600">88k SKUs</span>
-            </div>
-            <div className="flex items-baseline justify-between mt-1 text-xs">
-              <span className="text-slate-400">Accuracy</span>
-              <span className="font-semibold text-slate-800 dark:text-zinc-200">89.6%</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Comparative Monthly Output Stacked Bar Chart */}
@@ -308,18 +346,20 @@ export const TeamReportsView: React.FC = () => {
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Filter Classification:</span>
-            <select
-              value={selectedPodType}
-              onChange={(e) => setSelectedPodType(e.target.value as any)}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-border bg-card text-slate-700 dark:text-zinc-300"
-            >
-              <option value="all">All Pods & Teams</option>
-              <option value="scraping">Scraping Engineering Only</option>
-              <option value="production">Production Teams Only</option>
-            </select>
-          </div>
+          {currentUserRole !== 'production_lead' && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Filter Classification:</span>
+              <select
+                value={selectedPodType}
+                onChange={(e) => setSelectedPodType(e.target.value as any)}
+                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-border bg-card text-slate-700 dark:text-zinc-300"
+              >
+                <option value="all">All Pods & Teams</option>
+                <option value="scraping">Scraping Engineering Only</option>
+                <option value="production">Production Teams Only</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -337,7 +377,7 @@ export const TeamReportsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {podProductionData
+              {scopedPodProductionData
                 .filter((p) => {
                   if (selectedPodType === 'scraping') return p.team.includes('Scraper');
                   if (selectedPodType === 'production') return !p.team.includes('Scraper');

@@ -115,12 +115,26 @@ export const ManagerDashboardView: React.FC = () => {
     { day: 'Sun', completed: 14, target: 10 },
   ];
 
-  const teamProductivityData = [
-    { team: 'Lawson Team', productivity: 98.2, tasks: 42 },
-    { team: 'DTS Auto', productivity: 97.4, tasks: 38 },
-    { team: 'Surya Team', productivity: 92.8, tasks: 31 },
-    { team: 'Altius Ent', productivity: 89.6, tasks: 25 },
-  ];
+  const teamProductivityData = useMemo(() => {
+    const allProd = [
+      { team: 'Lawson Team', productivity: 98.2, tasks: 42 },
+      { team: 'DTS Auto', productivity: 97.4, tasks: 38 },
+      { team: 'Surya Team', productivity: 92.8, tasks: 31 },
+      { team: 'Altius Ent', productivity: 89.6, tasks: 25 },
+    ];
+    if (currentUserRole === 'production_lead' && associatedTeams.length > 0) {
+      return allProd.filter((tp) =>
+        associatedTeams.some(
+          (at) =>
+            at.toLowerCase().includes('lawson') && tp.team.includes('Lawson') ||
+            at.toLowerCase().includes('dts') && tp.team.includes('DTS') ||
+            at.toLowerCase().includes('surya') && tp.team.includes('Surya') ||
+            at.toLowerCase().includes('altius') && tp.team.includes('Altius')
+        )
+      );
+    }
+    return allProd;
+  }, [currentUserRole, associatedTeams]);
 
   const statusDistributionData = [
     { name: 'In Progress', value: inProgress || 4, color: '#3b82f6' },
@@ -231,7 +245,7 @@ export const ManagerDashboardView: React.FC = () => {
                 : currentUserRole === 'scraper'
                 ? 'Extraction Pod Active'
                 : currentUserRole === 'production_lead'
-                ? 'Multi-Pod Lead'
+                ? `${associatedTeams[0] || 'Production Pod'} Lead`
                 : 'Operations Super Admin'}
             </span>
           </div>
@@ -241,7 +255,7 @@ export const ManagerDashboardView: React.FC = () => {
               : currentUserRole === 'scraper'
               ? 'Real-time engineering overview of web extraction pipelines, crawler speed, and assigned tasks.'
               : currentUserRole === 'production_lead'
-              ? 'Multi-team overview coordinating Lawson, Surya, DTS, and Altius production pods.'
+              ? `Operational overview coordinating tasks and deliverables for ${associatedTeams[0] || 'your production team'}.`
               : "Here's what's happening across all scraping & production operations today."}
           </p>
         </div>
@@ -703,8 +717,8 @@ export const ManagerDashboardView: React.FC = () => {
         <div className="px-4 py-2.5 bg-slate-50/70 dark:bg-zinc-900/60 border-b border-border flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
-              {currentUserRole === 'production_user'
-                ? 'Your Associated Pods:'
+              {currentUserRole === 'production_user' || currentUserRole === 'production_lead'
+                ? 'Your Associated Pod:'
                 : currentUserRole === 'scraper'
                 ? 'Active Pod:'
                 : 'Multi-Team Selection:'}
@@ -720,9 +734,9 @@ export const ManagerDashboardView: React.FC = () => {
                   : 'bg-card border border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
               }`}
             >
-              {currentUserRole === 'production_user' ? 'All Associated Pods' : 'All Pods'} ({scopedBaseTasks.length})
+              {currentUserRole === 'production_user' || currentUserRole === 'production_lead' ? 'All Team Tasks' : 'All Pods'} ({scopedBaseTasks.length})
             </button>
-            {(currentUserRole === 'production_user' && associatedTeams.length > 0
+            {((currentUserRole === 'production_user' || currentUserRole === 'production_lead') && associatedTeams.length > 0
               ? associatedTeams.map((tName) => ({ id: tName, name: tName }))
               : currentUserRole === 'scraper'
               ? [{ id: 'core', name: currentEmployee.team || 'Core Scraping Engineering Pod' }]

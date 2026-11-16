@@ -103,7 +103,7 @@ export const Topbar: React.FC = () => {
     {
       id: 'production_lead',
       name: 'Priya Nair',
-      title: 'Production Lead (Multi-Team)',
+      title: 'Production Lead (Lawson Pod)',
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&auto=format&fit=crop&q=80',
     },
     {

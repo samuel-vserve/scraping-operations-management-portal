@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { getEmployeeAssociatedTeams } from '../../types';
 import {
   LineChart as LineChartIcon,
   TrendingUp,
@@ -38,7 +39,12 @@ import {
 } from 'recharts';
 
 export const PerformanceAnalyticsView: React.FC = () => {
-  const { tasks, teams, currentUserRole } = useApp();
+  const { tasks, teams, currentUserRole, currentEmployee } = useApp();
+
+  const associatedTeams = useMemo(
+    () => getEmployeeAssociatedTeams(currentEmployee),
+    [currentEmployee]
+  );
 
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [selectedDomain, setSelectedDomain] = useState<string>('all');
@@ -74,11 +80,17 @@ export const PerformanceAnalyticsView: React.FC = () => {
 
   const filteredDomainTelemetry = useMemo(() => {
     return domainTelemetry.filter((d) => {
+      if (currentUserRole === 'production_lead') {
+        const belongsToMyTeam = associatedTeams.some(
+          (at) => at.toLowerCase().includes(d.team.toLowerCase()) || d.team.toLowerCase().includes(at.toLowerCase())
+        );
+        if (!belongsToMyTeam) return false;
+      }
       const matchDomain = selectedDomain === 'all' || d.domain === selectedDomain;
       const matchTeam = selectedTeams.length === 0 || selectedTeams.includes(d.team);
       return matchDomain && matchTeam;
     });
-  }, [domainTelemetry, selectedDomain, selectedTeams]);
+  }, [domainTelemetry, selectedDomain, selectedTeams, currentUserRole, associatedTeams]);
 
   // Failure and error distribution
   const failureReasons = [
@@ -174,7 +186,7 @@ export const PerformanceAnalyticsView: React.FC = () => {
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
             <Layers className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Multi-Pod Telemetry:</span>
+            <span>{currentUserRole === 'production_lead' ? 'Your Assigned Pod:' : 'Multi-Pod Telemetry:'}</span>
           </span>
 
           <button
@@ -185,10 +197,13 @@ export const PerformanceAnalyticsView: React.FC = () => {
                 : 'bg-card border border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
             }`}
           >
-            All Pods Aggregate
+            {currentUserRole === 'production_lead' ? 'Your Pod Telemetry' : 'All Pods Aggregate'}
           </button>
 
-          {teams.map((t) => {
+          {(currentUserRole === 'production_lead' && associatedTeams.length > 0
+            ? associatedTeams.map((tName) => ({ id: tName, name: tName }))
+            : teams
+          ).map((t) => {
             const isSelected = selectedTeams.includes(t.name);
             return (
               <button

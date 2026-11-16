@@ -314,10 +314,10 @@ export const AllTasksView: React.FC = () => {
                 : 'bg-card border border-border text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
             }`}
           >
-            {currentUserRole === 'production_user' ? 'All Associated Pods' : 'All Pods'} ({scopedBaseTasks.length})
+            {currentUserRole === 'production_user' || currentUserRole === 'production_lead' ? 'All Team Tasks' : 'All Pods'} ({scopedBaseTasks.length})
           </button>
 
-          {(currentUserRole === 'production_user' && associatedTeams.length > 0
+          {((currentUserRole === 'production_user' || currentUserRole === 'production_lead') && associatedTeams.length > 0
             ? associatedTeams
             : currentUserRole === 'scraper'
             ? [currentEmployee.team || 'Core Scraping Engineering Pod']
