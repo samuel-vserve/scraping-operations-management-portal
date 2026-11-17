@@ -29,13 +29,26 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ projectI
 
   const project = projects.find((p) => p.id === projectId);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!project) return null;
 
   const projectTasks = tasks.filter((t) => t.projectId === project.id);
   const percentCompleted = Math.round((project.completedTasks / Math.max(1, project.totalTasks)) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+    <div 
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto"
+    >
       <div className="w-full max-w-4xl bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
         {/* Modal Top Header */}
         <div className="p-5 border-b border-border flex items-start justify-between gap-4 bg-slate-50/50 dark:bg-zinc-900/50">

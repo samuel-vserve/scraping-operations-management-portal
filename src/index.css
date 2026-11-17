@@ -33,6 +33,23 @@
 
   body {
     @apply bg-background text-foreground antialiased font-sans selection:bg-indigo-500/20 selection:text-indigo-600;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  }
+}
+
+/* Utilities for Modern Motion & Interactions */
+@layer utilities {
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+  }
+  .interactive-button {
+    @apply active:scale-[0.98] transition-transform duration-150;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-card-hover hover:border-slate-300 dark:hover:border-zinc-750;
+  }
+  .tabular-numbers {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -63,12 +80,12 @@
   background: rgba(100, 116, 139, 0.7);
 }
 
-/* Subtle animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Reduced Motion Support (WCAG 2.2 Level AA / Phase 5 & 6) */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

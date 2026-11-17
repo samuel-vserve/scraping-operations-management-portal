@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   UserCheck,
@@ -18,7 +18,7 @@ import {
 import { Employee, UserRole } from '../../types';
 
 export const UserManagementView: React.FC = () => {
-  const { employees, updateUserTeam, updateUserTeams } = useApp();
+  const { employees, updateUserTeam, updateUserTeams, addEmployee } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -40,8 +40,20 @@ export const UserManagementView: React.FC = () => {
   // New user form state
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('scraper');
-  const [newUserTeam, setNewUserTeam] = useState('Core Scraping Engineering Pod');
+  const [newUserRole, setNewUserRole] = useState<string>('Production User');
+  const [newUserTeams, setNewUserTeams] = useState<string[]>(['Lawson Production Team']);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setEditingUser(null);
+        setShowAddUserModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const filteredUsers = employees.filter((emp) => {
     const matchSearch =
@@ -400,21 +412,30 @@ export const UserManagementView: React.FC = () => {
 
       {/* Add New User Modal */}
       {showAddUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-card rounded-2xl border border-border shadow-2xl p-6 space-y-4 animate-scale-up">
+        <div 
+          onClick={(e) => e.target === e.currentTarget && setShowAddUserModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        >
+          <div className="w-full max-w-md bg-card rounded-2xl border border-border shadow-2xl p-6 space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-                Add New Portal Operator
-              </h3>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  Add New Portal Operator
+                </h3>
+              </div>
               <button
                 onClick={() => setShowAddUserModal(false)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 transition-colors p-1"
+                aria-label="Close dialog"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
                   Full Name
@@ -424,7 +445,7 @@ export const UserManagementView: React.FC = () => {
                   placeholder="e.g. Ramesh Kumar"
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200"
                 />
               </div>
 
@@ -437,41 +458,150 @@ export const UserManagementView: React.FC = () => {
                   placeholder="e.g. ramesh.k@vservetech.com"
                   value={newUserEmail}
                   onChange={(e) => setNewUserEmail(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                  Assigned Team / Pod
+                  Operational Role
                 </label>
                 <select
-                  value={newUserTeam}
-                  onChange={(e) => setNewUserTeam(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card text-slate-800 dark:text-zinc-200"
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card text-slate-800 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="Core Scraping Engineering Pod">Core Scraping Engineering Pod (Extraction)</option>
-                  <option value="Lawson Production Team">Lawson Production Team</option>
-                  <option value="Surya Production Team">Surya Production Team</option>
-                  <option value="DTS Automation Team">DTS Automation Team</option>
-                  <option value="Altius Enterprise Team">Altius Enterprise Team</option>
+                  <option value="Operations Manager">Operations Manager (Super Admin)</option>
+                  <option value="Production Lead">Production Lead (Multi-Pod Manager)</option>
+                  <option value="Production User">Production User (Task Owner & QC)</option>
+                  <option value="Scraping Engineer">Scraping Engineer (Extraction Pod)</option>
+                  <option value="Guest User">Guest User (Requestor Only)</option>
                 </select>
+              </div>
+
+              {/* Multi-Team Pod Assignment for New User */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                    Assigned Teams / Pods ({newUserTeams.length} Selected)
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setNewUserTeams(['Lawson Production Team', 'Surya Production Team', 'DTS Automation Team', 'Altius Enterprise Team'])}
+                      className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                    >
+                      + 4 Production
+                    </button>
+                    <span className="text-slate-300 dark:text-zinc-600 text-xs">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewUserTeams([])}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 font-semibold"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {/* Selected Pods Preview Chips */}
+                {newUserTeams.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-border mb-2.5">
+                    {newUserTeams.map((teamName) => (
+                      <span
+                        key={teamName}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 text-[10px] font-semibold border border-indigo-200 dark:border-indigo-800"
+                      >
+                        <span>{teamName}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewUserTeams((prev) => prev.filter((t) => t !== teamName))}
+                          className="hover:text-rose-500"
+                          aria-label={`Remove ${teamName}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Checkbox Options List */}
+                <div className="space-y-1.5 max-h-48 overflow-y-auto border border-border rounded-xl p-2 bg-card">
+                  {ALL_AVAILABLE_PODS.map((pod) => {
+                    const isChecked = newUserTeams.includes(pod.name);
+
+                    return (
+                      <label
+                        key={pod.id}
+                        className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors text-xs ${
+                          isChecked
+                            ? 'bg-indigo-50/40 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-medium'
+                            : 'border-border/60 hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setNewUserTeams((prev) =>
+                                prev.includes(pod.name) ? prev.filter((t) => t !== pod.name) : [...prev, pod.name]
+                              );
+                            }}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <div>
+                            <span className="font-semibold block">{pod.name}</span>
+                            <span className="text-[10px] text-slate-400 block">{pod.label}</span>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`text-[9px] uppercase font-mono px-1.5 py-0.5 rounded font-bold ${
+                            pod.type === 'scraping'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : pod.type === 'operations'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                          }`}
+                        >
+                          {pod.type}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
               <button
                 onClick={() => setShowAddUserModal(false)}
-                className="px-3 py-1.5 rounded-xl border border-border text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                className="px-3 py-1.5 rounded-xl border border-border text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 active:scale-[0.98] transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  alert(`User ${newUserName || 'New Operator'} created successfully.`);
+                  const finalName = newUserName.trim() || 'New Operator';
+                  const finalEmail = newUserEmail.trim() || `${finalName.toLowerCase().replace(/\s+/g, '.')}@vservetech.com`;
+                  const finalTeams = newUserTeams.length > 0 ? newUserTeams : ['Lawson Production Team'];
+                  
+                  addEmployee({
+                    name: finalName,
+                    email: finalEmail,
+                    role: newUserRole,
+                    team: finalTeams[0],
+                    assignedTeams: finalTeams,
+                    designation: `${newUserRole} Operator`,
+                  });
+                  
+                  setNewUserName('');
+                  setNewUserEmail('');
                   setShowAddUserModal(false);
                 }}
-                className="px-4 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 shadow-sm"
+                className="px-4 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 shadow-sm active:scale-[0.98] transition-all"
               >
                 Create Account
               </button>

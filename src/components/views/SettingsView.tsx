@@ -28,6 +28,7 @@ export const SettingsView: React.FC = () => {
     employees,
     teams,
     updateUserTeam,
+    updateUserTeams,
   } = useApp();
 
   const scrapingEngineers = employees.filter(
@@ -117,19 +118,35 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-500">Assigned Team:</span>
-                  <select
-                    value={user.team}
-                    onChange={(e) => updateUserTeam(user.id, e.target.value)}
-                    className="px-2.5 py-1.5 rounded-lg border border-border bg-slate-50 dark:bg-zinc-900 text-xs font-medium text-slate-800 dark:text-zinc-200 outline-none"
-                  >
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.name}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex flex-col sm:items-end gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {['Lawson Production Team', 'Surya Production Team', 'DTS Automation Team', 'Altius Enterprise Team'].map((teamName) => {
+                      const isAssigned = (user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team]).includes(teamName);
+                      return (
+                        <button
+                          key={teamName}
+                          type="button"
+                          onClick={() => {
+                            const current = user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team];
+                            const updated = current.includes(teamName)
+                              ? (current.length > 1 ? current.filter((t) => t !== teamName) : current)
+                              : [...current, teamName];
+                            updateUserTeams(user.id, updated, user.role);
+                          }}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all active:scale-95 ${
+                            isAssigned
+                              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-xs'
+                              : 'bg-card text-slate-400 dark:text-zinc-500 border-border hover:border-slate-300 hover:text-slate-600 dark:hover:text-zinc-300'
+                          }`}
+                        >
+                          {teamName.replace(' Production Team', '').replace(' Automation Team', '').replace(' Enterprise Team', '')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    {(user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team]).length} Teams Assigned (Multi-Pod Active)
+                  </span>
                 </div>
               </div>
             ))}

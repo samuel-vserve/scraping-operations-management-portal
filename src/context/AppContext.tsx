@@ -72,6 +72,7 @@ interface AppContextType {
   updateTaskInternalProgress: (taskId: string, progress: number, internalExecutionState?: string) => void;
   updateUserTeam: (employeeId: string, newTeamName: string) => void;
   updateUserTeams: (employeeId: string, assignedTeams: string[], role?: string) => void;
+  addEmployee: (employeeData: Partial<Employee>) => void;
   defaultScrapingAssignee: string;
   setDefaultScrapingAssignee: (name: string) => void;
   uploadScrapedFile: (taskId: string, fileName: string, fileSize: string, skuCount: number) => void;
@@ -738,6 +739,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const addEmployee = (empData: Partial<Employee>) => {
+    const teamsList = empData.assignedTeams && empData.assignedTeams.length > 0
+      ? empData.assignedTeams
+      : [empData.team || 'Lawson Production Team'];
+
+    const newEmp: Employee = {
+      id: `emp-${Date.now()}`,
+      name: empData.name || 'New Operator',
+      email: empData.email || 'operator@vservetech.com',
+      avatar: empData.avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80`,
+      role: empData.role || 'Production User',
+      team: teamsList[0],
+      assignedTeams: teamsList,
+      designation: empData.designation || 'Operations Specialist',
+      activeTasksCount: 0,
+      workloadCapacity: 0,
+      completedTasks: 0,
+      qcApprovalRate: 100,
+      availability: 'available',
+    };
+    setEmployees((prev) => [...prev, newEmp]);
+  };
+
   const bulkAssignTasks = (taskIds: string[], teamName: string, selectedEmployees: string[]) => {
     const primary = selectedEmployees[0] || '';
     setTasks((prev) =>
@@ -888,6 +912,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateTaskInternalProgress,
         updateUserTeam,
         updateUserTeams,
+        addEmployee,
         defaultScrapingAssignee,
         setDefaultScrapingAssignee,
         uploadScrapedFile,

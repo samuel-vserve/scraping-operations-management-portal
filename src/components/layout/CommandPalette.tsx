@@ -125,7 +125,10 @@ export const CommandPalette: React.FC = () => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div 
+      onClick={(e) => e.target === e.currentTarget && setIsCommandPaletteOpen(false)}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-fade-in"
+    >
       <div className="w-full max-w-xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden divide-y divide-border">
         {/* Search Input Bar */}
         <div className="flex items-center px-4 py-3 gap-3 bg-card">
