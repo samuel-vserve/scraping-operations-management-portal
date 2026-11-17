@@ -74,6 +74,7 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
+  password?: string;
   avatar: string;
   role: string;
   team: string; // primary team
@@ -89,7 +90,7 @@ export interface Employee {
 export interface Team {
   id: string;
   name: string;
-  teamType?: 'scraping' | 'production';
+  teamType?: 'scraping' | 'production' | 'operations';
   leader: string;
   leaderAvatar: string;
   members: string[]; // employee ids or names
@@ -99,6 +100,20 @@ export interface Team {
   completionRate: number;
   productivity: number; // index e.g. 94.2
   websitesManaged: string[];
+  description?: string;
+}
+
+export interface ActivityLogItem {
+  id: string;
+  timestamp: string;
+  relativeTime: string;
+  category: 'qc_approval' | 'file_upload' | 'assignment' | 'rework' | 'system';
+  actor: string;
+  actorRole: string;
+  avatar?: string;
+  action: string;
+  taskRef?: string;
+  ip?: string;
 }
 
 export interface ProjectContributor {

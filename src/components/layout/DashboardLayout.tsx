@@ -25,9 +25,11 @@ import { ActivityLogsView } from '../views/ActivityLogsView';
 import { EmailHistoryView } from '../views/EmailHistoryView';
 import { GDriveView } from '../views/GDriveView';
 import { UserManagementView } from '../views/UserManagementView';
+import { LoginView } from '../views/LoginView';
 
 export const DashboardLayout: React.FC = () => {
   const {
+    isAuthenticated,
     currentView,
     setCurrentView,
     currentUserRole,
@@ -36,6 +38,10 @@ export const DashboardLayout: React.FC = () => {
     inspectedProjectId,
     setInspectedProjectId,
   } = useApp();
+
+  if (!isAuthenticated) {
+    return <LoginView />;
+  }
 
   // Guard: Scraping User and Production User cannot access Teams/Pods or Team Members
   useEffect(() => {

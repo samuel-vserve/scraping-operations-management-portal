@@ -8,6 +8,7 @@ import {
   NotificationItem,
   EmailLog,
   ImportExportLog,
+  ActivityLogItem,
   UserRole,
   TaskStatus,
   QCHistoryEntry,
@@ -23,9 +24,20 @@ import {
   initialNotifications,
   initialEmailLogs,
   initialImportExportLogs,
+  initialActivityLogs,
+  demoSampleTasks,
+  demoSampleDatasetRecords,
+  demoSampleEmailLogs,
+  demoSampleImportExportLogs,
 } from '../data/initialData';
 
 interface AppContextType {
+  // Authentication & Session
+  isAuthenticated: boolean;
+  login: (email: string, password?: string) => boolean;
+  quickLoginAs: (role: UserRole, email?: string) => void;
+  logout: () => void;
+
   // Navigation & Role
   currentView: string;
   setCurrentView: (view: string) => void;
@@ -59,6 +71,7 @@ interface AppContextType {
   notifications: NotificationItem[];
   emailLogs: EmailLog[];
   importExportLogs: ImportExportLog[];
+  activityLogs: ActivityLogItem[];
 
   // Operational Actions
   approveManagerQC: (taskId: string, remarks: string) => void;
@@ -73,6 +86,29 @@ interface AppContextType {
   updateUserTeam: (employeeId: string, newTeamName: string) => void;
   updateUserTeams: (employeeId: string, assignedTeams: string[], role?: string) => void;
   addEmployee: (employeeData: Partial<Employee>) => void;
+  deleteEmployee: (employeeId: string) => void;
+  addTeam: (teamData: {
+    name: string;
+    teamType: 'production' | 'scraping' | 'operations';
+    leader?: string;
+    leaderAvatar?: string;
+    members?: string[];
+    websitesManaged?: string[];
+    description?: string;
+  }) => void;
+  updateTeam: (teamId: string, updates: Partial<Team>) => void;
+  deleteTeam: (teamId: string) => void;
+  assignTeamMembers: (teamId: string, memberIds: string[]) => void;
+  addActivityLog: (log: {
+    category: 'qc_approval' | 'file_upload' | 'assignment' | 'rework' | 'system';
+    actor: string;
+    actorRole: string;
+    avatar?: string;
+    action: string;
+    taskRef?: string;
+  }) => void;
+  resetToLiveEmptyState: () => void;
+  loadDemoSandboxData: () => void;
   defaultScrapingAssignee: string;
   setDefaultScrapingAssignee: (name: string) => void;
   uploadScrapedFile: (taskId: string, fileName: string, fileSize: string, skuCount: number) => void;
@@ -90,7 +126,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY_PREFIX = 'vserve_scraping_portal_v3_';
+const LOCAL_STORAGE_KEY_PREFIX = 'vserve_scraping_portal_live_v1_';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Navigation & Preferences
@@ -110,6 +146,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
   const [defaultScrapingAssignee, setDefaultScrapingAssignee] = useState<string>('Karthik R');
 
+  // Authentication & Active Session State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}auth_status`);
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  const [activeUserEmail, setActiveUserEmail] = useState<string>(() => {
+    return localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}active_email`) || 'samuel.p@vservetech.com';
+  });
+
   // Entities state with localStorage fallback
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}tasks`);
@@ -126,8 +172,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialTeams;
   });
 
+  const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}activity_logs`);
+    return saved ? JSON.parse(saved) : initialActivityLogs;
+  });
+
   // Dynamically resolve logged-in employee profile
   const currentEmployee = useMemo<Employee>(() => {
+    const byEmail = employees.find(
+      (e) => e.email.toLowerCase() === activeUserEmail.toLowerCase() || e.name.toLowerCase() === activeUserEmail.toLowerCase()
+    );
+    if (byEmail) return byEmail;
+
     if (currentUserRole === 'manager') {
       return employees.find((e) => e.name === 'Samuel P' || e.id === 'emp-1') || employees[0];
     }
@@ -155,7 +211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       qcApprovalRate: 0,
       availability: 'available',
     };
-  }, [currentUserRole, employees]);
+  }, [activeUserEmail, currentUserRole, employees]);
 
   const [projects] = useState<Project[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}projects`);
@@ -202,6 +258,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}employees`, JSON.stringify(employees));
   }, [employees]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}teams`, JSON.stringify(teams));
+  }, [teams]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}activity_logs`, JSON.stringify(activityLogs));
+  }, [activityLogs]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}auth_status`, JSON.stringify(isAuthenticated));
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}active_email`, activeUserEmail);
+  }, [activeUserEmail]);
 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}notifications`, JSON.stringify(notifications));
@@ -760,6 +832,256 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       availability: 'available',
     };
     setEmployees((prev) => [...prev, newEmp]);
+
+    // Synchronize team memberships
+    setTeams((prev) =>
+      prev.map((t) => {
+        if (teamsList.includes(t.name) && !t.members.includes(newEmp.id) && !t.members.includes(newEmp.name)) {
+          return { ...t, members: [...t.members, newEmp.id] };
+        }
+        return t;
+      })
+    );
+
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Created new operator account: "${newEmp.name}" (${newEmp.email}) with role ${newEmp.role}.`,
+    });
+  };
+
+  const deleteEmployee = (employeeId: string) => {
+    const emp = employees.find((e) => e.id === employeeId || e.name === employeeId);
+    if (!emp) return;
+    setEmployees((prev) => prev.filter((e) => e.id !== emp.id && e.name !== emp.name));
+    setTeams((prev) =>
+      prev.map((t) => ({
+        ...t,
+        members: t.members.filter((m) => m !== emp.id && m !== emp.name),
+      }))
+    );
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Removed operator account: ${emp.name} (${emp.email}).`,
+    });
+  };
+
+  const addTeam = (teamData: {
+    name: string;
+    teamType: 'production' | 'scraping' | 'operations';
+    leader?: string;
+    leaderAvatar?: string;
+    members?: string[];
+    websitesManaged?: string[];
+    description?: string;
+  }) => {
+    const leaderName = teamData.leader || 'Unassigned Leader';
+    const leaderEmp = employees.find((e) => e.name === leaderName);
+    const newTeam: Team = {
+      id: `team-${Date.now()}`,
+      name: teamData.name,
+      teamType: teamData.teamType,
+      leader: leaderName,
+      leaderAvatar:
+        teamData.leaderAvatar ||
+        (leaderEmp ? leaderEmp.avatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'),
+      members: teamData.members || (leaderEmp ? [leaderEmp.id] : []),
+      activeTasks: 0,
+      completedTasks: 0,
+      pendingTasks: 0,
+      completionRate: 100,
+      productivity: 100,
+      websitesManaged: teamData.websitesManaged || [],
+      description: teamData.description,
+    };
+
+    setTeams((prev) => [...prev, newTeam]);
+
+    // Also update assignedTeams for members assigned to this team
+    if (teamData.members && teamData.members.length > 0) {
+      setEmployees((prev) =>
+        prev.map((emp) => {
+          if (teamData.members?.includes(emp.id) || teamData.members?.includes(emp.name)) {
+            const current = emp.assignedTeams || [emp.team];
+            if (!current.includes(teamData.name)) {
+              return { ...emp, assignedTeams: [...current, teamData.name] };
+            }
+          }
+          return emp;
+        })
+      );
+    }
+
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Created new ${teamData.teamType} pod: "${teamData.name}" led by ${leaderName}.`,
+    });
+  };
+
+  const updateTeam = (teamId: string, updates: Partial<Team>) => {
+    setTeams((prev) =>
+      prev.map((t) => (t.id === teamId ? { ...t, ...updates } : t))
+    );
+  };
+
+  const deleteTeam = (teamId: string) => {
+    const teamToDelete = teams.find((t) => t.id === teamId);
+    if (!teamToDelete) return;
+    setTeams((prev) => prev.filter((t) => t.id !== teamId));
+    setEmployees((prev) =>
+      prev.map((emp) => ({
+        ...emp,
+        assignedTeams: (emp.assignedTeams || [emp.team]).filter((name) => name !== teamToDelete.name),
+      }))
+    );
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Decommissioned team pod: "${teamToDelete.name}".`,
+    });
+  };
+
+  const assignTeamMembers = (teamId: string, memberIds: string[]) => {
+    const targetTeam = teams.find((t) => t.id === teamId);
+    if (!targetTeam) return;
+
+    setTeams((prev) =>
+      prev.map((t) => (t.id === teamId ? { ...t, members: memberIds } : t))
+    );
+
+    // Synchronize employees assignedTeams
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        const isMember = memberIds.includes(emp.id) || memberIds.includes(emp.name);
+        const currentAssigned = emp.assignedTeams || [emp.team];
+        if (isMember && !currentAssigned.includes(targetTeam.name)) {
+          return { ...emp, assignedTeams: [...currentAssigned, targetTeam.name] };
+        }
+        if (!isMember && currentAssigned.includes(targetTeam.name)) {
+          const filtered = currentAssigned.filter((tName) => tName !== targetTeam.name);
+          return { ...emp, assignedTeams: filtered.length > 0 ? filtered : [filtered[0] || 'Unassigned'] };
+        }
+        return emp;
+      })
+    );
+
+    addActivityLog({
+      category: 'assignment',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Updated personnel rosters for pod "${targetTeam.name}" (${memberIds.length} members assigned).`,
+    });
+  };
+
+  const addActivityLog = (log: {
+    category: 'qc_approval' | 'file_upload' | 'assignment' | 'rework' | 'system';
+    actor: string;
+    actorRole: string;
+    avatar?: string;
+    action: string;
+    taskRef?: string;
+  }) => {
+    const newEntry: ActivityLogItem = {
+      id: `act-${Date.now()}`,
+      timestamp: new Date().toLocaleString(),
+      relativeTime: 'Just now',
+      category: log.category,
+      actor: log.actor,
+      actorRole: log.actorRole,
+      avatar:
+        log.avatar ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+      action: log.action,
+      taskRef: log.taskRef,
+    };
+    setActivityLogs((prev) => [newEntry, ...prev.slice(0, 99)]);
+  };
+
+  const login = (email: string, password?: string): boolean => {
+    const emp = employees.find(
+      (e) =>
+        e.email.toLowerCase() === email.trim().toLowerCase() ||
+        e.name.toLowerCase() === email.trim().toLowerCase()
+    );
+    if (emp) {
+      setActiveUserEmail(emp.email);
+      let mappedRole: UserRole = 'manager';
+      const r = emp.role.toLowerCase();
+      if (r.includes('manager') || r.includes('admin') || r.includes('lead & qa')) mappedRole = 'manager';
+      else if (r.includes('production lead')) mappedRole = 'production_lead';
+      else if (r.includes('production')) mappedRole = 'production_user';
+      else if (r.includes('scraping') || r.includes('scraper') || r.includes('extraction')) mappedRole = 'scraper';
+      else if (r.includes('guest')) mappedRole = 'guest';
+
+      setCurrentUserRole(mappedRole);
+      setIsAuthenticated(true);
+      addActivityLog({
+        category: 'system',
+        actor: emp.name,
+        actorRole: emp.role,
+        action: `Operator ${emp.name} logged into portal session.`,
+      });
+      return true;
+    }
+    return false;
+  };
+
+  const quickLoginAs = (role: UserRole, email?: string) => {
+    let target = email ? employees.find((e) => e.email === email) : null;
+    if (!target) {
+      if (role === 'manager') target = employees.find((e) => e.name === 'Samuel P') || employees[0];
+      else if (role === 'production_lead' || role === 'production') target = employees.find((e) => e.name === 'Priya Nair') || employees[1];
+      else if (role === 'production_user') target = employees.find((e) => e.name === 'Divya Murugan') || employees[3];
+      else if (role === 'scraper') target = employees.find((e) => e.name === 'Karthik R') || employees[2];
+      else target = { id: 'emp-guest', name: 'Mark Stevens', email: 'mark.stevens@client.com', role: 'Guest User' } as Employee;
+    }
+
+    if (target) {
+      setActiveUserEmail(target.email);
+      setCurrentUserRole(role);
+      setIsAuthenticated(true);
+    }
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+  };
+
+  const resetToLiveEmptyState = () => {
+    setTasks([]);
+    setDatasetRecords([]);
+    setEmailLogs([]);
+    setImportExportLogs([]);
+    setActivityLogs([
+      {
+        id: `act-live-${Date.now()}`,
+        timestamp: new Date().toLocaleString(),
+        relativeTime: 'Live Active',
+        category: 'system',
+        actor: currentEmployee.name,
+        actorRole: currentEmployee.role,
+        action: 'System cleared to Live Production State. All demo data wiped.',
+      },
+    ]);
+  };
+
+  const loadDemoSandboxData = () => {
+    setTasks(demoSampleTasks);
+    setDatasetRecords(demoSampleDatasetRecords);
+    setEmailLogs(demoSampleEmailLogs);
+    setImportExportLogs(demoSampleImportExportLogs);
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: 'Loaded sample sandbox dataset for demonstration and capacity testing.',
+    });
   };
 
   const bulkAssignTasks = (taskIds: string[], teamName: string, selectedEmployees: string[]) => {
@@ -873,6 +1195,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        isAuthenticated,
+        login,
+        quickLoginAs,
+        logout,
         currentView,
         setCurrentView,
         currentUserRole,
@@ -901,6 +1227,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notifications,
         emailLogs,
         importExportLogs,
+        activityLogs,
+        addActivityLog,
         approveManagerQC,
         requestReworkQC,
         reScrapingRequest,
@@ -913,6 +1241,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateUserTeam,
         updateUserTeams,
         addEmployee,
+        deleteEmployee,
+        addTeam,
+        updateTeam,
+        deleteTeam,
+        assignTeamMembers,
+        resetToLiveEmptyState,
+        loadDemoSandboxData,
         defaultScrapingAssignee,
         setDefaultScrapingAssignee,
         uploadScrapedFile,

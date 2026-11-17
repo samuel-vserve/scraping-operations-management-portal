@@ -803,8 +803,31 @@ export const AllTasksView: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={11} className="p-12 text-center text-slate-400">
-                    No tasks match the active filters or search terms.
+                  <td colSpan={11} className="p-16 text-center text-slate-400">
+                    <div className="max-w-sm mx-auto space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mx-auto flex items-center justify-center border border-indigo-100 dark:border-indigo-900 shadow-sm">
+                        <ListTodo className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                          {tasks.length === 0 ? 'No Active Scraping Tasks Yet' : 'No Tasks Matching Filters'}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                          {tasks.length === 0
+                            ? 'Your live operational environment is ready. Click below to create your first extraction task.'
+                            : 'Adjust your search query or clear the active team/priority filters to view tasks.'}
+                        </p>
+                      </div>
+                      {tasks.length === 0 && (
+                        <button
+                          onClick={() => setIsCreateTaskModalOpen(true)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-all"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Create First Scraping Task</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

@@ -1,4 +1,4 @@
-import { Task, Employee, Team, Project, ScrapedRecord, NotificationItem, EmailLog, ImportExportLog } from '../types';
+import { Task, Employee, Team, Project, ScrapedRecord, NotificationItem, EmailLog, ImportExportLog, ActivityLogItem } from '../types';
 
 export const initialEmployees: Employee[] = [
   {
@@ -10,9 +10,9 @@ export const initialEmployees: Employee[] = [
     team: 'Operations Leadership',
     assignedTeams: ['Operations Leadership', 'Lawson Production Team', 'Surya Production Team', 'DTS Automation Team', 'Altius Enterprise Team'],
     designation: 'Operations Lead & QA Architect',
-    activeTasksCount: 4,
-    workloadCapacity: 70,
-    completedTasks: 184,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 98.4,
     availability: 'available',
   },
@@ -25,9 +25,9 @@ export const initialEmployees: Employee[] = [
     team: 'Lawson Production Team',
     assignedTeams: ['Lawson Production Team', 'Surya Production Team', 'DTS Automation Team', 'Altius Enterprise Team'],
     designation: 'Production Account Delivery Lead (Multi-Pod)',
-    activeTasksCount: 3,
-    workloadCapacity: 85,
-    completedTasks: 215,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 99.1,
     availability: 'busy',
   },
@@ -40,9 +40,9 @@ export const initialEmployees: Employee[] = [
     team: 'Core Scraping Engineering Pod',
     assignedTeams: ['Core Scraping Engineering Pod'],
     designation: 'Senior Web Extraction Engineer (Lead Scraper)',
-    activeTasksCount: 3,
-    workloadCapacity: 90,
-    completedTasks: 142,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 95.8,
     availability: 'busy',
   },
@@ -55,9 +55,9 @@ export const initialEmployees: Employee[] = [
     team: 'Lawson Production Team',
     assignedTeams: ['Lawson Production Team'],
     designation: 'Production Validation Specialist',
-    activeTasksCount: 2,
-    workloadCapacity: 50,
-    completedTasks: 98,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 97.2,
     availability: 'available',
   },
@@ -70,9 +70,9 @@ export const initialEmployees: Employee[] = [
     team: 'Altius Enterprise Team',
     assignedTeams: ['Altius Enterprise Team'],
     designation: 'Enterprise Client Success & Production Lead',
-    activeTasksCount: 4,
-    workloadCapacity: 80,
-    completedTasks: 134,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 94.6,
     availability: 'busy',
   },
@@ -85,9 +85,9 @@ export const initialEmployees: Employee[] = [
     team: 'Core Scraping Engineering Pod',
     assignedTeams: ['Core Scraping Engineering Pod'],
     designation: 'Catalog Harvester & Anti-Bot Specialist',
-    activeTasksCount: 2,
-    workloadCapacity: 45,
-    completedTasks: 88,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 96.0,
     availability: 'available',
   },
@@ -100,9 +100,9 @@ export const initialEmployees: Employee[] = [
     team: 'Core Scraping Engineering Pod',
     assignedTeams: ['Core Scraping Engineering Pod'],
     designation: 'Distributed Pipeline & Headless Browser Scraper',
-    activeTasksCount: 1,
-    workloadCapacity: 30,
-    completedTasks: 112,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 94.8,
     availability: 'available',
   },
@@ -115,9 +115,9 @@ export const initialEmployees: Employee[] = [
     team: 'Core Scraping Engineering Pod',
     assignedTeams: ['Core Scraping Engineering Pod'],
     designation: 'Extraction QA & Pre-Flight Specialist',
-    activeTasksCount: 2,
-    workloadCapacity: 60,
-    completedTasks: 65,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 93.4,
     availability: 'available',
   },
@@ -130,9 +130,9 @@ export const initialEmployees: Employee[] = [
     team: 'Surya Production Team',
     assignedTeams: ['Surya Production Team'],
     designation: 'Production Account Delivery Lead',
-    activeTasksCount: 3,
-    workloadCapacity: 75,
-    completedTasks: 165,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 96.5,
     availability: 'busy',
   },
@@ -145,9 +145,9 @@ export const initialEmployees: Employee[] = [
     team: 'DTS Automation Team',
     assignedTeams: ['DTS Automation Team'],
     designation: 'DTS Data Feed Delivery Lead',
-    activeTasksCount: 2,
-    workloadCapacity: 65,
-    completedTasks: 140,
+    activeTasksCount: 0,
+    workloadCapacity: 0,
+    completedTasks: 0,
     qcApprovalRate: 97.8,
     availability: 'available',
   },
@@ -162,11 +162,11 @@ export const initialTeams: Team[] = [
     leader: 'Karthik R',
     leaderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
     members: ['emp-3', 'emp-6', 'emp-7', 'emp-8'],
-    activeTasks: 8,
-    completedTasks: 407,
-    pendingTasks: 3,
-    completionRate: 97.2,
-    productivity: 98.4,
+    activeTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    completionRate: 100,
+    productivity: 100,
     websitesManaged: ['grainger.com', 'lawsonproducts.com', 'mscdirect.com', 'fastenal.com', 'zoro.com', 'uline.com'],
   },
   // Multiple Production Teams
@@ -177,11 +177,11 @@ export const initialTeams: Team[] = [
     leader: 'Priya Nair',
     leaderAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&auto=format&fit=crop&q=80',
     members: ['emp-2', 'emp-4'],
-    activeTasks: 5,
-    completedTasks: 313,
-    pendingTasks: 2,
-    completionRate: 98.0,
-    productivity: 97.5,
+    activeTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    completionRate: 100,
+    productivity: 100,
     websitesManaged: ['lawsonproducts.com', 'grainger.com'],
   },
   {
@@ -191,11 +191,11 @@ export const initialTeams: Team[] = [
     leader: 'Surya Prakash',
     leaderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
     members: ['emp-9'],
-    activeTasks: 3,
-    completedTasks: 165,
-    pendingTasks: 1,
-    completionRate: 94.2,
-    productivity: 92.8,
+    activeTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    completionRate: 100,
+    productivity: 100,
     websitesManaged: ['zoro.com', 'uline.com'],
   },
   {
@@ -205,11 +205,11 @@ export const initialTeams: Team[] = [
     leader: 'David Chen',
     leaderAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&auto=format&fit=crop&q=80',
     members: ['emp-10'],
-    activeTasks: 2,
-    completedTasks: 140,
-    pendingTasks: 1,
-    completionRate: 98.5,
-    productivity: 97.4,
+    activeTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    completionRate: 100,
+    productivity: 100,
     websitesManaged: ['globalindustrial.com', 'grainger.ca'],
   },
   {
@@ -219,11 +219,11 @@ export const initialTeams: Team[] = [
     leader: 'Arun Kumar',
     leaderAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
     members: ['emp-5'],
-    activeTasks: 4,
-    completedTasks: 134,
-    pendingTasks: 2,
-    completionRate: 91.5,
-    productivity: 89.6,
+    activeTasks: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    completionRate: 100,
+    productivity: 100,
     websitesManaged: ['amazon.com', 'digikey.com'],
   },
 ];
@@ -234,9 +234,9 @@ export const initialProjects: Project[] = [
     name: 'Grainger US Catalog Refresh',
     client: 'Industrial Supplies Co.',
     website: 'grainger.com',
-    totalTasks: 24,
-    completedTasks: 19,
-    activeSkus: 48500,
+    totalTasks: 0,
+    completedTasks: 0,
+    activeSkus: 0,
     status: 'active',
     teamLead: 'Samuel P',
     deadline: '2026-11-28',
@@ -306,9 +306,9 @@ export const initialProjects: Project[] = [
     name: 'McMaster-Carr Fasteners & Hardware',
     client: 'Precision Mechanics Ltd.',
     website: 'mcmaster.com',
-    totalTasks: 16,
-    completedTasks: 12,
-    activeSkus: 32000,
+    totalTasks: 0,
+    completedTasks: 0,
+    activeSkus: 0,
     status: 'active',
     teamLead: 'Surya Prakash',
     deadline: '2026-12-05',
@@ -348,9 +348,9 @@ export const initialProjects: Project[] = [
     name: 'Fastenal MRO Heavy Tools',
     client: 'Apex Tooling Group',
     website: 'fastenal.com',
-    totalTasks: 14,
-    completedTasks: 8,
-    activeSkus: 21400,
+    totalTasks: 0,
+    completedTasks: 0,
+    activeSkus: 0,
     status: 'in_review',
     teamLead: 'Samuel P',
     deadline: '2026-11-20',
@@ -390,9 +390,9 @@ export const initialProjects: Project[] = [
     name: 'Zoro Electrical Components',
     client: 'ElectroWorld Global',
     website: 'zoro.com',
-    totalTasks: 18,
-    completedTasks: 11,
-    activeSkus: 37500,
+    totalTasks: 0,
+    completedTasks: 0,
+    activeSkus: 0,
     status: 'active',
     teamLead: 'Priya Nair',
     deadline: '2026-12-10',
@@ -432,9 +432,9 @@ export const initialProjects: Project[] = [
     name: 'Lawson Products Fleet Maintenance',
     client: 'Commercial Fleet Logistics',
     website: 'lawsonproducts.com',
-    totalTasks: 12,
-    completedTasks: 12,
-    activeSkus: 15200,
+    totalTasks: 0,
+    completedTasks: 0,
+    activeSkus: 0,
     status: 'completed',
     teamLead: 'Samuel P',
     deadline: '2026-11-14',
@@ -474,9 +474,9 @@ export const initialProjects: Project[] = [
     name: 'Global Industrial Materials Handling',
     client: 'Apex Logistics Hub',
     website: 'globalindustrial.com',
-    totalTasks: 20,
-    completedTasks: 14,
-    activeSkus: 41000,
+    totalTasks: 0,
+    completedTasks: 0,
+    activeSkus: 0,
     status: 'active',
     teamLead: 'Priya Nair',
     deadline: '2026-12-15',
@@ -484,7 +484,10 @@ export const initialProjects: Project[] = [
   },
 ];
 
-export const initialTasks: Task[] = [
+export const initialTasks: Task[] = [];
+
+export const demoSampleTasks: Task[] = [
+
   {
     id: 'TSK-1048',
     projectId: 'proj-1',
@@ -734,7 +737,9 @@ export const initialTasks: Task[] = [
   },
 ];
 
-export const sampleDatasetRecords: ScrapedRecord[] = [
+export const sampleDatasetRecords: ScrapedRecord[] = [];
+
+export const demoSampleDatasetRecords: ScrapedRecord[] = [
   {
     id: 'rec-1',
     skuId: 'GR-458921-A',
@@ -1002,7 +1007,9 @@ export const initialNotifications: NotificationItem[] = [
   },
 ];
 
-export const initialEmailLogs: EmailLog[] = [
+export const initialEmailLogs: EmailLog[] = [];
+
+export const demoSampleEmailLogs: EmailLog[] = [
   {
     id: 'eml-101',
     recipient: 'karthik.r@vservetech.com',
@@ -1045,7 +1052,9 @@ export const initialEmailLogs: EmailLog[] = [
   },
 ];
 
-export const initialImportExportLogs: ImportExportLog[] = [
+export const initialImportExportLogs: ImportExportLog[] = [];
+
+export const demoSampleImportExportLogs: ImportExportLog[] = [
   {
     id: 'ie-1',
     type: 'import',
@@ -1105,5 +1114,19 @@ export const initialImportExportLogs: ImportExportLog[] = [
     gdriveSyncStatus: 'synced',
     uploadedBy: 'Samuel P',
     timestamp: '2026-11-16 08:00 AM',
+  },
+];
+
+
+export const initialActivityLogs: ActivityLogItem[] = [
+  {
+    id: 'act-init-1',
+    timestamp: '2026-11-17 09:00 AM',
+    relativeTime: 'Live Active',
+    category: 'system' as const,
+    actor: 'Samuel P',
+    actorRole: 'Operations Manager',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    action: 'Vserve Scraping Operations Portal initialized in Live Production Mode. All pipelines ready for task assignments.',
   },
 ];

@@ -18,7 +18,15 @@ import {
 import { Employee, UserRole } from '../../types';
 
 export const UserManagementView: React.FC = () => {
-  const { employees, updateUserTeam, updateUserTeams, addEmployee } = useApp();
+  const { teams, employees, updateUserTeam, updateUserTeams, addEmployee } = useApp();
+
+  // Dynamically derive available pods from live application teams
+  const ALL_AVAILABLE_PODS = teams.map((t) => ({
+    id: t.id,
+    name: t.name,
+    type: t.teamType || (t.name.includes('Scraping') ? 'scraping' : t.name.includes('Operations') ? 'operations' : 'production'),
+    label: `${t.name} (${t.teamType || 'Pod'})`,
+  }));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -26,16 +34,6 @@ export const UserManagementView: React.FC = () => {
   const [targetTeams, setTargetTeams] = useState<string[]>(['Lawson Production Team']);
   const [targetRole, setTargetRole] = useState<string>('Production Lead');
   const [showAddUserModal, setShowAddUserModal] = useState<boolean>(false);
-
-  // Available Pods / Teams in the Organization
-  const ALL_AVAILABLE_PODS = [
-    { id: 'lawson', name: 'Lawson Production Team', type: 'production', label: 'Lawson Production Pod' },
-    { id: 'surya', name: 'Surya Production Team', type: 'production', label: 'Surya Production Pod' },
-    { id: 'dts', name: 'DTS Automation Team', type: 'production', label: 'DTS Automation Pod' },
-    { id: 'altius', name: 'Altius Enterprise Team', type: 'production', label: 'Altius Enterprise Pod' },
-    { id: 'scraping', name: 'Core Scraping Engineering Pod', type: 'scraping', label: 'Core Scraping Engineering Pod (Extraction)' },
-    { id: 'operations', name: 'Operations Leadership', type: 'operations', label: 'Operations Leadership & QA' },
-  ];
 
   // New user form state
   const [newUserName, setNewUserName] = useState('');
@@ -283,6 +281,31 @@ export const UserManagementView: React.FC = () => {
             </div>
 
             <div className="space-y-4">
+              {/* Primary Team / Pod Dropdown (Matching Quick Assignment) */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
+                  Assigned Team / Pod (Primary)
+                </label>
+                <select
+                  value={targetTeams[0] || (ALL_AVAILABLE_PODS[0] ? ALL_AVAILABLE_PODS[0].name : 'Lawson Production Team')}
+                  onChange={(e) => {
+                    const sel = e.target.value;
+                    if (!targetTeams.includes(sel)) {
+                      setTargetTeams([sel, ...targetTeams]);
+                    } else {
+                      setTargetTeams([sel, ...targetTeams.filter((t) => t !== sel)]);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-card text-slate-800 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  {ALL_AVAILABLE_PODS.map((pod) => (
+                    <option key={pod.id} value={pod.name}>
+                      {pod.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Role Configuration */}
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">

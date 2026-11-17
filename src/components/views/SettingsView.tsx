@@ -23,6 +23,8 @@ export const SettingsView: React.FC = () => {
     currentUserRole,
     setCurrentUserRole,
     resetAllData,
+    resetToLiveEmptyState,
+    loadDemoSandboxData,
     defaultScrapingAssignee,
     setDefaultScrapingAssignee,
     employees,
@@ -120,29 +122,32 @@ export const SettingsView: React.FC = () => {
 
                 <div className="flex flex-col sm:items-end gap-1.5">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {['Lawson Production Team', 'Surya Production Team', 'DTS Automation Team', 'Altius Enterprise Team'].map((teamName) => {
-                      const isAssigned = (user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team]).includes(teamName);
-                      return (
-                        <button
-                          key={teamName}
-                          type="button"
-                          onClick={() => {
-                            const current = user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team];
-                            const updated = current.includes(teamName)
-                              ? (current.length > 1 ? current.filter((t) => t !== teamName) : current)
-                              : [...current, teamName];
-                            updateUserTeams(user.id, updated, user.role);
-                          }}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all active:scale-95 ${
-                            isAssigned
-                              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-xs'
-                              : 'bg-card text-slate-400 dark:text-zinc-500 border-border hover:border-slate-300 hover:text-slate-600 dark:hover:text-zinc-300'
-                          }`}
-                        >
-                          {teamName.replace(' Production Team', '').replace(' Automation Team', '').replace(' Enterprise Team', '')}
-                        </button>
-                      );
-                    })}
+                    {teams
+                      .filter((t) => t.teamType !== 'scraping')
+                      .map((team) => {
+                        const teamName = team.name;
+                        const isAssigned = (user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team]).includes(teamName);
+                        return (
+                          <button
+                            key={team.id}
+                            type="button"
+                            onClick={() => {
+                              const current = user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team];
+                              const updated = current.includes(teamName)
+                                ? (current.length > 1 ? current.filter((t) => t !== teamName) : current)
+                                : [...current, teamName];
+                              updateUserTeams(user.id, updated, user.role);
+                            }}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all active:scale-95 ${
+                              isAssigned
+                                ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 shadow-xs'
+                                : 'bg-card text-slate-400 dark:text-zinc-500 border-border hover:border-slate-300 hover:text-slate-600 dark:hover:text-zinc-300'
+                            }`}
+                          >
+                            {teamName.replace(' Production Team', '').replace(' Automation Team', '').replace(' Enterprise Team', '').replace(' Team', '')}
+                          </button>
+                        );
+                      })}
                   </div>
                   <span className="text-[10px] text-slate-400">
                     {(user.assignedTeams && user.assignedTeams.length > 0 ? user.assignedTeams : [user.team]).length} Teams Assigned (Multi-Pod Active)
@@ -205,29 +210,56 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Database & Demo State Reset */}
-        <div className="p-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 space-y-3">
-          <h3 className="text-xs font-bold text-rose-800 dark:text-rose-400 uppercase tracking-wider">
-            Operational State Persistence
-          </h3>
+        <div className="p-5 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-4">
           <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-wider">
+              Live Production vs Sandbox Demo Environment
+            </h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200">
+              Operational Mode
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-card">
             <div>
               <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
-                Reset Demo Data to Initial Seeds
+                Pristine Live Site (0 Demo Tasks)
               </p>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                Clears localStorage modifications and restores initial scraping tasks, teams, and sample datasets.
+                Resets active operational state to clean production: 0 mock tasks, empty queues, ready for live operations.
               </p>
             </div>
             <button
               onClick={() => {
-                if (window.confirm('Reset all operational data to factory defaults?')) {
-                  resetAllData();
+                if (window.confirm('Reset portal to clean live state with 0 tasks?')) {
+                  resetToLiveEmptyState();
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 hover:bg-rose-100 text-rose-700 dark:text-rose-300 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 text-xs font-semibold transition-colors shrink-0"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset State</span>
+              <span>Clean Live State</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-card">
+            <div>
+              <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
+                Load Sandbox Demo Dataset
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                Populates sample tasks, metrics, and workflows for testing UI features and stakeholder demonstrations.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                loadDemoSandboxData();
+                alert('Sandbox demo data loaded successfully.');
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shrink-0 shadow-xs"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Load Demo Data</span>
             </button>
           </div>
         </div>

@@ -18,104 +18,16 @@ import {
 } from 'lucide-react';
 
 export const ActivityLogsView: React.FC = () => {
-  const { tasks, setCurrentView, setSelectedTaskIdForQC } = useApp();
+  const { tasks, setCurrentView, setSelectedTaskIdForQC, activityLogs } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Comprehensive chronological system audit logs
-  const auditLogs = [
-    {
-      id: 'act-101',
-      timestamp: '2026-11-16 11:42 AM',
-      relativeTime: '18 mins ago',
-      category: 'qc_approval',
-      actor: 'Samuel P',
-      actorRole: 'Operations Manager',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-      action: 'Approved Manager QC for task TSK-1048 (Grainger Industrial Roller Bearings) with 99.4% SKU completeness.',
-      taskRef: 'TSK-1048',
-      ip: '192.168.1.104',
-    },
-    {
-      id: 'act-102',
-      timestamp: '2026-11-16 11:20 AM',
-      relativeTime: '40 mins ago',
-      category: 'file_upload',
-      actor: 'Karthik R',
-      actorRole: 'Senior Scraping Engineer',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
-      action: 'Uploaded scraped output file "Grainger_Bearings_Mined_12k.xlsx" (12,450 records, 4.8 MB) and requested QC review.',
-      taskRef: 'TSK-1048',
-      ip: '192.168.1.112',
-    },
-    {
-      id: 'act-103',
-      timestamp: '2026-11-16 10:15 AM',
-      relativeTime: '1 hr 45 mins ago',
-      category: 'task_assignment',
-      actor: 'Priya Nair',
-      actorRole: 'Production Lead (Lawson)',
-      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&auto=format&fit=crop&q=80',
-      action: 'Created task TSK-1054 "Fastenal Stainless Fasteners" with automated SKU detection (8,200 SKUs) routed to Core Scraping Engineering Pod.',
-      taskRef: 'TSK-1054',
-      ip: '192.168.1.108',
-    },
-    {
-      id: 'act-104',
-      timestamp: '2026-11-16 09:30 AM',
-      relativeTime: '2 hrs ago',
-      category: 'rework_request',
-      actor: 'Samuel P',
-      actorRole: 'Operations Manager',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-      action: 'Requested rework on TSK-1049 (Fastenal Fasteners): missing high-resolution image links on 12% of product items.',
-      taskRef: 'TSK-1049',
-      ip: '192.168.1.104',
-    },
-    {
-      id: 'act-105',
-      timestamp: '2026-11-16 08:45 AM',
-      relativeTime: '3 hrs ago',
-      category: 'reassignment',
-      actor: 'Sneha Patel',
-      actorRole: 'Scraping Engineer',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
-      action: 'Peer-reassigned task TSK-1051 to Karthik R due to specialized anti-bot bypass on Akamai sensor data.',
-      taskRef: 'TSK-1051',
-      ip: '192.168.1.115',
-    },
-    {
-      id: 'act-106',
-      timestamp: '2026-11-15 05:10 PM',
-      relativeTime: 'Yesterday',
-      category: 'production_delivery',
-      actor: 'Divya Murugan',
-      actorRole: 'Production Specialist',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80',
-      action: 'Validated and marked task TSK-1045 as Completed; pushed deliverable to Google Drive folder "Lawson_Industrial_Release_Nov".',
-      taskRef: 'TSK-1045',
-      ip: '192.168.1.110',
-    },
-    {
-      id: 'act-107',
-      timestamp: '2026-11-15 03:00 PM',
-      relativeTime: 'Yesterday',
-      category: 'ingestion',
-      actor: 'System Automation',
-      actorRole: 'Automated Ingestion Daemon',
-      avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=120&auto=format&fit=crop&q=80',
-      action: 'Automated Google Drive backup completed: 6 client deliverables mirrored to secure cloud repository.',
-      taskRef: 'SYS-SYNC',
-      ip: '10.0.4.12',
-    },
-  ];
-
-  const filteredLogs = auditLogs.filter((log) => {
+  const filteredLogs = (activityLogs || []).filter((log) => {
     const matchSearch =
       log.actor.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.taskRef.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.taskRef && log.taskRef.toLowerCase().includes(searchQuery.toLowerCase())) ||
       log.actorRole.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchCategory =
@@ -330,18 +242,22 @@ export const ActivityLogsView: React.FC = () => {
                     {log.action}
                   </td>
                   <td className="py-3 px-4 whitespace-nowrap">
-                    <button
-                      onClick={() => {
-                        if (log.taskRef.startsWith('TSK-')) {
-                          setSelectedTaskIdForQC(log.taskRef);
-                          setCurrentView('manager-qc');
-                        }
-                      }}
-                      className="font-mono font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-                    >
-                      {log.taskRef}
-                      {log.taskRef.startsWith('TSK-') && <ExternalLink className="w-3 h-3" />}
-                    </button>
+                    {log.taskRef ? (
+                      <button
+                        onClick={() => {
+                          if (log.taskRef && log.taskRef.startsWith('TSK-')) {
+                            setSelectedTaskIdForQC(log.taskRef);
+                            setCurrentView('manager-qc');
+                          }
+                        }}
+                        className="font-mono font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        {log.taskRef}
+                        {log.taskRef.startsWith('TSK-') && <ExternalLink className="w-3 h-3" />}
+                      </button>
+                    ) : (
+                      <span className="font-mono text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-right font-mono text-[11px] text-slate-400 whitespace-nowrap">
                     {log.ip}

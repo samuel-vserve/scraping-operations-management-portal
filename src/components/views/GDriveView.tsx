@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Cloud,
@@ -26,88 +26,70 @@ export const GDriveView: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  const folders = [
-    { id: 'all', name: 'All Cloud Files', count: 18 },
-    { id: 'lawson', name: 'Lawson Industrial', count: 6, path: '/Vserve-Operations/Lawson-Industrial' },
-    { id: 'dts', name: 'DTS Automation', count: 4, path: '/Vserve-Operations/DTS-Automation' },
-    { id: 'surya', name: 'Surya Production', count: 3, path: '/Vserve-Operations/Surya-Production' },
-    { id: 'altius', name: 'Altius Enterprise', count: 2, path: '/Vserve-Operations/Altius-Enterprise' },
-    { id: 'seeds', name: 'Raw Seed Archives', count: 3, path: '/Vserve-Operations/Raw-Seed-Archives' },
-  ];
+  const driveFiles = useMemo(() => {
+    const list: any[] = [];
+    tasks.forEach((t) => {
+      if (t.outputFileName) {
+        list.push({
+          id: `gdf-out-${t.id}`,
+          name: t.outputFileName,
+          folder: t.productionTeam?.toLowerCase().includes('dts')
+            ? 'dts'
+            : t.productionTeam?.toLowerCase().includes('surya')
+            ? 'surya'
+            : t.productionTeam?.toLowerCase().includes('altius')
+            ? 'altius'
+            : 'lawson',
+          taskRef: t.id,
+          team: t.productionTeam || 'Production Pod',
+          size: t.outputFileSize || '12.4 MB',
+          records: t.completedSkus || t.skuCount,
+          uploadedBy: t.primaryAssignee || 'Scraping Engineer',
+          lastSynced: 'Just now',
+          syncStatus: 'synced',
+        });
+      }
+      if (t.inputFileName) {
+        list.push({
+          id: `gdf-in-${t.id}`,
+          name: t.inputFileName,
+          folder: 'seeds',
+          taskRef: t.id,
+          team: t.productionTeam || 'Production Pod',
+          size: t.inputFileSize || '2.1 MB',
+          records: t.skuCount,
+          uploadedBy: t.productionUser || 'Production Lead',
+          lastSynced: 'Just now',
+          syncStatus: 'synced',
+        });
+      }
+    });
 
-  const driveFiles = [
-    {
-      id: 'gdf-1',
-      name: 'Grainger_Bearings_Mined_12k.xlsx',
-      folder: 'lawson',
-      taskRef: 'TSK-1048',
-      team: 'Lawson Production Team',
-      size: '4.8 MB',
-      records: 12450,
-      uploadedBy: 'Karthik R',
-      lastSynced: '15 mins ago',
-      syncStatus: 'synced',
-    },
-    {
-      id: 'gdf-2',
-      name: 'Fastenal_Fasteners_Clean_v2.xlsx',
-      folder: 'lawson',
-      taskRef: 'TSK-1049',
-      team: 'Lawson Production Team',
-      size: '2.4 MB',
-      records: 8200,
-      uploadedBy: 'Sneha Patel',
-      lastSynced: '1 hr ago',
-      syncStatus: 'synced',
-    },
-    {
-      id: 'gdf-3',
-      name: 'McMaster_Valves_Client_Package.xlsx',
-      folder: 'dts',
-      taskRef: 'TSK-1051',
-      team: 'DTS Automation Team',
-      size: '14.5 MB',
-      records: 6500,
-      uploadedBy: 'Priya Nair',
-      lastSynced: '2 hrs ago',
-      syncStatus: 'synced',
-    },
-    {
-      id: 'gdf-4',
-      name: 'Global_Racks_Source_URLs.xlsx',
-      folder: 'seeds',
-      taskRef: 'TSK-1050',
-      team: 'Core Scraping Engineering Pod',
-      size: '1.8 MB',
-      records: 4200,
-      uploadedBy: 'Samuel P',
-      lastSynced: 'Yesterday',
-      syncStatus: 'synced',
-    },
-    {
-      id: 'gdf-5',
-      name: 'Zoro_Tools_Catalog_Q4.json',
-      folder: 'surya',
-      taskRef: 'TSK-1052',
-      team: 'Surya Production Team',
-      size: '32.1 MB',
-      records: 48500,
-      uploadedBy: 'Surya Prakash',
-      lastSynced: 'Yesterday',
-      syncStatus: 'synced',
-    },
-    {
-      id: 'gdf-6',
-      name: 'AutomationDirect_PLCs_Verified.csv',
-      folder: 'altius',
-      taskRef: 'TSK-1053',
-      team: 'Altius Enterprise Team',
-      size: '5.2 MB',
-      records: 14200,
-      uploadedBy: 'Arun Kumar',
-      lastSynced: '2 days ago',
-      syncStatus: 'synced',
-    },
+    importExportLogs.forEach((l) => {
+      list.push({
+        id: `gdf-ie-${l.id}`,
+        name: l.fileName,
+        folder: 'all',
+        taskRef: 'IMPORT',
+        team: 'Operational Ingestion',
+        size: l.size,
+        records: l.recordsCount,
+        uploadedBy: l.uploadedBy,
+        lastSynced: l.timestamp,
+        syncStatus: 'synced',
+      });
+    });
+
+    return list;
+  }, [tasks, importExportLogs]);
+
+  const folders = [
+    { id: 'all', name: 'All Cloud Files', count: driveFiles.length },
+    { id: 'lawson', name: 'Lawson Industrial', count: driveFiles.filter((f) => f.folder === 'lawson').length, path: '/Vserve-Operations/Lawson-Industrial' },
+    { id: 'dts', name: 'DTS Automation', count: driveFiles.filter((f) => f.folder === 'dts').length, path: '/Vserve-Operations/DTS-Automation' },
+    { id: 'surya', name: 'Surya Production', count: driveFiles.filter((f) => f.folder === 'surya').length, path: '/Vserve-Operations/Surya-Production' },
+    { id: 'altius', name: 'Altius Enterprise', count: driveFiles.filter((f) => f.folder === 'altius').length, path: '/Vserve-Operations/Altius-Enterprise' },
+    { id: 'seeds', name: 'Raw Seed Archives', count: driveFiles.filter((f) => f.folder === 'seeds').length, path: '/Vserve-Operations/Raw-Seed-Archives' },
   ];
 
   const filteredFiles = driveFiles.filter((f) => {
@@ -266,60 +248,70 @@ export const GDriveView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredFiles.map((file) => (
-                <tr key={file.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600">
-                        <FileSpreadsheet className="w-4 h-4" />
+              {filteredFiles.length > 0 ? (
+                filteredFiles.map((file) => (
+                  <tr key={file.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/40 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600">
+                          <FileSpreadsheet className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-zinc-100">{file.name}</div>
+                          <div className="text-[10px] text-slate-400">Uploaded by {file.uploadedBy}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-900 dark:text-zinc-100">{file.name}</div>
-                        <div className="text-[10px] text-slate-400">Uploaded by {file.uploadedBy}</div>
+                    </td>
+                    <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                      {file.taskRef}
+                    </td>
+                    <td className="py-3 px-4 text-slate-700 dark:text-zinc-300 font-medium">
+                      {file.team}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-slate-900 dark:text-zinc-100">
+                      {file.records.toLocaleString()} SKUs
+                    </td>
+                    <td className="py-3 px-4 font-mono text-slate-500">
+                      {file.size}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Synced
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-slate-400">
+                      {file.lastSynced}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => alert(`Opening Google Drive preview for ${file.name}`)}
+                          className="p-1.5 rounded-lg border border-border bg-card hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300"
+                          title="Open in Google Drive"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => alert(`Downloading ${file.name}`)}
+                          className="p-1.5 rounded-lg border border-border bg-card hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300"
+                          title="Download Copy"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                    {file.taskRef}
-                  </td>
-                  <td className="py-3 px-4 text-slate-700 dark:text-zinc-300 font-medium">
-                    {file.team}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-900 dark:text-zinc-100">
-                    {file.records.toLocaleString()} SKUs
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-500">
-                    {file.size}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 text-[10px] font-bold">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Synced
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-400">
-                    {file.lastSynced}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => alert(`Opening Google Drive preview for ${file.name}`)}
-                        className="p-1.5 rounded-lg border border-border bg-card hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300"
-                        title="Open in Google Drive"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => alert(`Downloading ${file.name}`)}
-                        className="p-1.5 rounded-lg border border-border bg-card hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300"
-                        title="Download Copy"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <Cloud className="w-8 h-8 mx-auto text-slate-300 dark:text-zinc-600 mb-2 stroke-[1.5]" />
+                    <p className="text-xs font-semibold text-slate-700 dark:text-zinc-300">No Google Drive Deliverables Synced Yet</p>
+                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto mt-0.5">Scraped data deliverables and approved client Excel/CSV packages will automatically synchronize here once tasks are uploaded and verified.</p>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
