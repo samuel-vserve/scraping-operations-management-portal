@@ -25,17 +25,12 @@ import {
   initialEmailLogs,
   initialImportExportLogs,
   initialActivityLogs,
-  demoSampleTasks,
-  demoSampleDatasetRecords,
-  demoSampleEmailLogs,
-  demoSampleImportExportLogs,
 } from '../data/initialData';
 
 interface AppContextType {
   // Authentication & Session
   isAuthenticated: boolean;
   login: (email: string, password?: string) => boolean;
-  quickLoginAs: (role: UserRole, email?: string) => void;
   logout: () => void;
 
   // Navigation & Role
@@ -108,7 +103,6 @@ interface AppContextType {
     taskRef?: string;
   }) => void;
   resetToLiveEmptyState: () => void;
-  loadDemoSandboxData: () => void;
   defaultScrapingAssignee: string;
   setDefaultScrapingAssignee: (name: string) => void;
   uploadScrapedFile: (taskId: string, fileName: string, fileSize: string, skuCount: number) => void;
@@ -126,7 +120,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY_PREFIX = 'vserve_scraping_portal_live_v1_';
+const LOCAL_STORAGE_KEY_PREFIX = 'vserve_scraping_portal_prod_live_v2_';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Navigation & Preferences
@@ -1004,12 +998,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const login = (email: string, password?: string): boolean => {
+    const trimmedEmail = email.trim().toLowerCase();
     const emp = employees.find(
       (e) =>
-        e.email.toLowerCase() === email.trim().toLowerCase() ||
-        e.name.toLowerCase() === email.trim().toLowerCase()
+        e.email.toLowerCase() === trimmedEmail ||
+        e.name.toLowerCase() === trimmedEmail
     );
     if (emp) {
+      if (emp.password && password && emp.password !== password) {
+        return false;
+      }
       setActiveUserEmail(emp.email);
       let mappedRole: UserRole = 'manager';
       const r = emp.role.toLowerCase();
@@ -1025,28 +1023,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         category: 'system',
         actor: emp.name,
         actorRole: emp.role,
-        action: `Operator ${emp.name} logged into portal session.`,
+        avatar: emp.avatar,
+        action: `Operator authenticated: ${emp.name} (${emp.email}) signed into live console session.`,
       });
       return true;
     }
     return false;
-  };
-
-  const quickLoginAs = (role: UserRole, email?: string) => {
-    let target = email ? employees.find((e) => e.email === email) : null;
-    if (!target) {
-      if (role === 'manager') target = employees.find((e) => e.name === 'Samuel P') || employees[0];
-      else if (role === 'production_lead' || role === 'production') target = employees.find((e) => e.name === 'Priya Nair') || employees[1];
-      else if (role === 'production_user') target = employees.find((e) => e.name === 'Divya Murugan') || employees[3];
-      else if (role === 'scraper') target = employees.find((e) => e.name === 'Karthik R') || employees[2];
-      else target = { id: 'emp-guest', name: 'Mark Stevens', email: 'mark.stevens@client.com', role: 'Guest User' } as Employee;
-    }
-
-    if (target) {
-      setActiveUserEmail(target.email);
-      setCurrentUserRole(role);
-      setIsAuthenticated(true);
-    }
   };
 
   const logout = () => {
@@ -1058,6 +1040,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDatasetRecords([]);
     setEmailLogs([]);
     setImportExportLogs([]);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}tasks`);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}records`);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}email_logs`);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}ie_logs`);
     setActivityLogs([
       {
         id: `act-live-${Date.now()}`,
@@ -1066,22 +1052,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         category: 'system',
         actor: currentEmployee.name,
         actorRole: currentEmployee.role,
-        action: 'System cleared to Live Production State. All demo data wiped.',
+        action: 'System cleared to Live Production State. Workspace cache purged.',
       },
     ]);
-  };
-
-  const loadDemoSandboxData = () => {
-    setTasks(demoSampleTasks);
-    setDatasetRecords(demoSampleDatasetRecords);
-    setEmailLogs(demoSampleEmailLogs);
-    setImportExportLogs(demoSampleImportExportLogs);
-    addActivityLog({
-      category: 'system',
-      actor: currentEmployee.name,
-      actorRole: currentEmployee.role,
-      action: 'Loaded sample sandbox dataset for demonstration and capacity testing.',
-    });
   };
 
   const bulkAssignTasks = (taskIds: string[], teamName: string, selectedEmployees: string[]) => {
@@ -1197,7 +1170,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         isAuthenticated,
         login,
-        quickLoginAs,
         logout,
         currentView,
         setCurrentView,
@@ -1247,7 +1219,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteTeam,
         assignTeamMembers,
         resetToLiveEmptyState,
-        loadDemoSandboxData,
         defaultScrapingAssignee,
         setDefaultScrapingAssignee,
         uploadScrapedFile,

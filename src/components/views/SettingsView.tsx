@@ -24,7 +24,6 @@ export const SettingsView: React.FC = () => {
     setCurrentUserRole,
     resetAllData,
     resetToLiveEmptyState,
-    loadDemoSandboxData,
     defaultScrapingAssignee,
     setDefaultScrapingAssignee,
     employees,
@@ -209,57 +208,41 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Database & Demo State Reset */}
-        <div className="p-5 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-4">
+        {/* Operational Cache & Local Storage */}
+        <div className="p-5 rounded-2xl border border-border bg-card shadow-subtle space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-wider">
-              Live Production vs Sandbox Demo Environment
-            </h3>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200">
-              Operational Mode
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-wider">
+                Workspace Cache & Storage State
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
+                Manage cached browser operational state and local table filters.
+              </p>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold border border-emerald-200">
+              Live Production
             </span>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-slate-50/50 dark:bg-zinc-900/50">
             <div>
               <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
-                Pristine Live Site (0 Demo Tasks)
+                Purge Local Workspace Cache
               </p>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                Resets active operational state to clean production: 0 mock tasks, empty queues, ready for live operations.
+                Clears cached filters and temporary state without modifying your operational user accounts or pods.
               </p>
             </div>
             <button
               onClick={() => {
-                if (window.confirm('Reset portal to clean live state with 0 tasks?')) {
+                if (window.confirm('Clear local workspace cache and refresh live state?')) {
                   resetToLiveEmptyState();
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 text-xs font-semibold transition-colors shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 text-xs font-semibold transition-colors shrink-0 shadow-xs"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Clean Live State</span>
-            </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-card">
-            <div>
-              <p className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
-                Load Sandbox Demo Dataset
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                Populates sample tasks, metrics, and workflows for testing UI features and stakeholder demonstrations.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                loadDemoSandboxData();
-                alert('Sandbox demo data loaded successfully.');
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shrink-0 shadow-xs"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Load Demo Data</span>
+              <span>Purge Cache</span>
             </button>
           </div>
         </div>

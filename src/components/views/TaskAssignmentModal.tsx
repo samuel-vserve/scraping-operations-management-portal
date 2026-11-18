@@ -456,30 +456,6 @@ export const TaskAssignmentModal: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Quick Preset Buttons for Instant Testing */}
-                    <div>
-                      <span className="text-[10px] text-slate-400 block mb-1">
-                        Or test with sample seed catalogs:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          { name: 'Grainger_Bearings_12450.xlsx', count: 12450 },
-                          { name: 'Fastenal_HexBolts_8200.csv', count: 8200 },
-                          { name: 'McMaster_Valves_6500.xlsx', count: 6500 },
-                          { name: 'Zoro_CircuitBreakers_15300.csv', count: 15300 },
-                        ].map((preset) => (
-                          <button
-                            key={preset.name}
-                            type="button"
-                            onClick={() => selectPresetFile(preset.name, preset.count)}
-                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-[10px] font-mono text-slate-700 dark:text-zinc-300 transition-colors"
-                          >
-                            +{preset.name} ({preset.count.toLocaleString()})
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* SKU Count Auto-Calculated Display */}
                     <div className="pt-2 border-t border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
                       <div>

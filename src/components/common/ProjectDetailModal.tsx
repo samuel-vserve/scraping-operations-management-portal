@@ -160,38 +160,49 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ projectI
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(project.contributors || []).map((contrib, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl border border-border bg-slate-50/50 dark:bg-zinc-900/50 flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={contrib.avatar}
-                      alt={contrib.name}
-                      className="w-10 h-10 rounded-full object-cover border border-border"
-                    />
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-zinc-100">
-                        {contrib.name}
-                      </h4>
-                      <p className="text-[10px] text-slate-500 dark:text-zinc-400">{contrib.role}</p>
-                      <p className="text-[10px] text-indigo-600 font-medium">{contrib.team}</p>
+            {(!project.contributors || project.contributors.length === 0) ? (
+              <div className="p-6 rounded-xl border border-dashed border-border text-center space-y-1">
+                <p className="text-xs font-semibold text-slate-600 dark:text-zinc-400">
+                  No deliverables recorded yet for this project.
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Once scraping tasks under this project are completed and approved, team contributor metrics will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {project.contributors.map((contrib, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl border border-border bg-slate-50/50 dark:bg-zinc-900/50 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={contrib.avatar}
+                        alt={contrib.name}
+                        className="w-10 h-10 rounded-full object-cover border border-border"
+                      />
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-zinc-100">
+                          {contrib.name}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 dark:text-zinc-400">{contrib.role}</p>
+                        <p className="text-[10px] text-indigo-600 font-medium">{contrib.team}</p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-mono font-bold text-slate-900 dark:text-zinc-100">
-                      {contrib.skusDelivered.toLocaleString()} SKUs
-                    </div>
-                    <div className="text-[10px] text-emerald-600 font-semibold">
-                      {contrib.tasksCompleted} Tasks Done
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-mono font-bold text-slate-900 dark:text-zinc-100">
+                        {contrib.skusDelivered.toLocaleString()} SKUs
+                      </div>
+                      <div className="text-[10px] text-emerald-600 font-semibold">
+                        {contrib.tasksCompleted} Tasks Done
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* SECTION 2: TASKS UNDER THIS PROJECT */}
@@ -208,34 +219,45 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ projectI
               </span>
             </div>
 
-            <div className="divide-y divide-border border border-border rounded-lg overflow-hidden">
-              {projectTasks.map((t) => (
-                <div
-                  key={t.id}
-                  onClick={() => {
-                    setInspectedTaskId(t.id);
-                  }}
-                  className="p-3 hover:bg-slate-50 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                      {t.id}
-                    </span>
-                    <span className="font-medium text-slate-900 dark:text-zinc-100 truncate">
-                      {t.title}
-                    </span>
-                  </div>
+            {projectTasks.length === 0 ? (
+              <div className="p-6 rounded-xl border border-dashed border-border text-center space-y-1">
+                <p className="text-xs font-semibold text-slate-600 dark:text-zinc-400">
+                  No scraping tasks assigned to this project yet.
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Click "+ Create Task" in the top bar to initialize a task for this client.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+                {projectTasks.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      setInspectedTaskId(t.id);
+                    }}
+                    className="p-3 hover:bg-slate-50 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                        {t.id}
+                      </span>
+                      <span className="font-medium text-slate-900 dark:text-zinc-100 truncate">
+                        {t.title}
+                      </span>
+                    </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono text-slate-500">
-                      {t.skuCount.toLocaleString()} SKUs
-                    </span>
-                    <StatusBadge status={t.status} />
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="font-mono text-slate-500">
+                        {t.skuCount.toLocaleString()} SKUs
+                      </span>
+                      <StatusBadge status={t.status} />
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* SECTION 3: PROJECT AUDIT & MILESTONE TIMELINE */}

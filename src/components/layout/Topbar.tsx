@@ -364,50 +364,19 @@ export const Topbar: React.FC = () => {
                 </button>
               </div>
 
-              {/* Interactive Role Switcher */}
-              <div className="pt-2 border-t border-border">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1.5">
-                  Quick Switch Operator Role
-                </p>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {rolesList.map((r) => (
-                    <button
-                      key={r.id}
-                      onClick={() => {
-                        setCurrentUserRole(r.id);
-                        setIsProfileOpen(false);
-                        if (r.id === 'guest') {
-                          setCurrentView('guest-portal');
-                        } else {
-                          setCurrentView('overview');
-                        }
-                      }}
-                      className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors text-xs ${
-                        currentUserRole === r.id
-                          ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-900'
-                          : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={r.avatar}
-                          alt={r.name}
-                          className="w-5 h-5 rounded-full object-cover"
-                        />
-                        <div className="min-w-0">
-                          <span className="font-medium truncate block">{r.name}</span>
-                          <span className="text-[9px] text-slate-400 truncate block">{r.title}</span>
-                        </div>
-                      </div>
-                      {currentUserRole === r.id && (
-                        <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Sign Out / Exit Session */}
+              <div className="pt-2 border-t border-border">
+                <button
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 text-xs font-semibold border border-rose-200 dark:border-rose-900 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out of Portal</span>
+                </button>
+              </div>
               <div className="pt-2 border-t border-border">
                 <button
                   onClick={() => {
