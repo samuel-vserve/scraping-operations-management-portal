@@ -593,19 +593,20 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
         </>
       )}
 
-      {/* SECTION 3: EMPLOYEE DIRECTORY & TEAM ASSIGNMENT */}
-      <div className="p-6 rounded-2xl border border-border bg-card shadow-subtle space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-              Workforce Directory & Capacity ({filteredEmployees.length} Personnel)
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-zinc-400">
-              {currentUserRole === 'production_lead'
-                ? `Showing specialists assigned to ${associatedTeams[0] || 'your production team'}.`
-                : 'Scraping Engineers (Extraction Engine) and Production Specialists across all pods.'}
-            </p>
-          </div>
+      {/* SECTION 3: EMPLOYEE DIRECTORY & TEAM ASSIGNMENT (SHOWN ONLY ON 'members' TAB) */}
+      {activeTab === 'members' && (
+        <div className="p-6 rounded-2xl border border-border bg-card shadow-subtle space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                Workforce Directory & Capacity ({filteredEmployees.length} Personnel)
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                {currentUserRole === 'production_lead'
+                  ? `Showing specialists assigned to ${associatedTeams[0] || 'your production team'}.`
+                  : 'Scraping Engineers (Extraction Engine) and Production Specialists across all pods.'}
+              </p>
+            </div>
 
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">
@@ -779,6 +780,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({ defaultTab = 'teams' }) =>
           })}
         </div>
       </div>
+      )}
 
       {/* CREATE NEW TEAM / POD MODAL */}
       {showCreateTeamModal && (

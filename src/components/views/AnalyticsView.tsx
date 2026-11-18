@@ -28,8 +28,15 @@ interface AnalyticsViewProps {
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ mode = 'analytics' }) => {
   const { datasetRecords, tasks } = useApp();
 
-  // Active Task File Context
-  const activeTask = tasks[0];
+  // Active Task File Context (Safely defaulted if tasks list is currently empty)
+  const activeTask = tasks[0] || {
+    id: 'TSK-IDLE',
+    projectName: 'Scraping Operations Repository',
+    outputFileName: 'Pipeline_Dataset_Staged.xlsx',
+    primaryAssignee: 'Karthik R',
+    createdAt: 'Live Workspace',
+    skuCount: datasetRecords.length,
+  };
 
   // Filters & State
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,7 +124,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ mode = 'analytics'
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Dataset_Export_${activeTask.id}.csv`);
+    link.setAttribute('download', `Dataset_Export_${activeTask?.id || 'live'}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();

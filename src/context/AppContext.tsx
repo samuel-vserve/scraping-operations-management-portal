@@ -94,6 +94,9 @@ interface AppContextType {
   updateTeam: (teamId: string, updates: Partial<Team>) => void;
   deleteTeam: (teamId: string) => void;
   assignTeamMembers: (teamId: string, memberIds: string[]) => void;
+  addProject: (projectData: Partial<Project>) => Project;
+  updateProject: (projectId: string, updates: Partial<Project>) => void;
+  deleteProject: (projectId: string) => void;
   addActivityLog: (log: {
     category: 'qc_approval' | 'file_upload' | 'assignment' | 'rework' | 'system';
     actor: string;
@@ -120,7 +123,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY_PREFIX = 'vserve_scraping_portal_prod_live_v2_';
+const LOCAL_STORAGE_KEY_PREFIX = 'vserve_scraping_portal_prod_live_v3_';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Navigation & Preferences
@@ -207,7 +210,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [activeUserEmail, currentUserRole, employees]);
 
-  const [projects] = useState<Project[]>(() => {
+  const [projects, setProjects] = useState<Project[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}projects`);
     return saved ? JSON.parse(saved) : initialProjects;
   });
@@ -256,6 +259,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}teams`, JSON.stringify(teams));
   }, [teams]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}projects`, JSON.stringify(projects));
+  }, [projects]);
 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}activity_logs`, JSON.stringify(activityLogs));
@@ -973,6 +980,89 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const addProject = (projectData: Partial<Project>): Project => {
+    const newId = `proj-${Date.now()}`;
+    const cleanWebsite = (projectData.website || 'example.com').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    const newProject: Project = {
+      id: newId,
+      name: projectData.name?.trim() || 'New Client Extraction Portfolio',
+      client: projectData.client?.trim() || 'Enterprise Client',
+      website: cleanWebsite,
+      totalTasks: 0,
+      completedTasks: 0,
+      activeSkus: projectData.activeSkus || 0,
+      status: projectData.status || 'active',
+      teamLead: projectData.teamLead || currentEmployee.name || 'Samuel P',
+      deadline: projectData.deadline || '2026-12-31',
+      health: projectData.health || 'healthy',
+      description: projectData.description?.trim() || 'Custom web extraction portfolio covering structured catalog specifications, live pricing, and asset synchronization.',
+      gdriveUrl: projectData.gdriveUrl || `https://drive.google.com/drive/folders/vserve-${newId}`,
+      contributors: [],
+      history: [
+        {
+          id: `hist-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          actor: currentEmployee.name,
+          action: `Initialized project portfolio: "${projectData.name || newId}"`,
+          type: 'milestone',
+        },
+      ],
+    };
+    setProjects((prev) => [newProject, ...prev]);
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Created client project: "${newProject.name}" for client "${newProject.client}".`,
+    });
+    return newProject;
+  };
+
+  const updateProject = (projectId: string, updates: Partial<Project>) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const cleanWebsite = updates.website
+            ? updates.website.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '')
+            : p.website;
+          return {
+            ...p,
+            ...updates,
+            website: cleanWebsite,
+            history: [
+              ...(p.history || []),
+              {
+                id: `hist-${Date.now()}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                actor: currentEmployee.name,
+                action: `Updated project parameters & metadata`,
+                type: 'milestone',
+              },
+            ],
+          };
+        }
+        return p;
+      })
+    );
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Updated project parameters for ${projectId}.`,
+    });
+  };
+
+  const deleteProject = (projectId: string) => {
+    const target = projects.find((p) => p.id === projectId);
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    addActivityLog({
+      category: 'system',
+      actor: currentEmployee.name,
+      actorRole: currentEmployee.role,
+      action: `Deleted project portfolio: "${target?.name || projectId}".`,
+    });
+  };
+
   const addActivityLog = (log: {
     category: 'qc_approval' | 'file_upload' | 'assignment' | 'rework' | 'system';
     actor: string;
@@ -1158,6 +1248,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks(initialTasks);
     setEmployees(initialEmployees);
     setTeams(initialTeams);
+    setProjects(initialProjects);
     setDatasetRecords(sampleDatasetRecords);
     setNotifications(initialNotifications);
     setEmailLogs(initialEmailLogs);
@@ -1218,6 +1309,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateTeam,
         deleteTeam,
         assignTeamMembers,
+        addProject,
+        updateProject,
+        deleteProject,
         resetToLiveEmptyState,
         defaultScrapingAssignee,
         setDefaultScrapingAssignee,

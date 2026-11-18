@@ -105,62 +105,77 @@ export const ManagerDashboardView: React.FC = () => {
   const completedTasks = scopedBaseTasks.filter((t) => t.status === 'completed').length;
 
   // Recharts Data
-  const weeklyCompletionData = [
-    { day: 'Mon', completed: 18, target: 20 },
-    { day: 'Tue', completed: 26, target: 22 },
-    { day: 'Wed', completed: 32, target: 25 },
-    { day: 'Thu', completed: 28, target: 25 },
-    { day: 'Fri', completed: 38, target: 30 },
-    { day: 'Sat', completed: 22, target: 15 },
-    { day: 'Sun', completed: 14, target: 10 },
-  ];
+  const weeklyCompletionData = useMemo(() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days.map((day) => ({
+      day,
+      completed: 0,
+      target: scopedBaseTasks.length > 0 ? Math.ceil(scopedBaseTasks.length / 5) : 0,
+    }));
+  }, [scopedBaseTasks]);
 
   const teamProductivityData = useMemo(() => {
-    const allProd = [
-      { team: 'Lawson Team', productivity: 98.2, tasks: 42 },
-      { team: 'DTS Auto', productivity: 97.4, tasks: 38 },
-      { team: 'Surya Team', productivity: 92.8, tasks: 31 },
-      { team: 'Altius Ent', productivity: 89.6, tasks: 25 },
-    ];
-    if (currentUserRole === 'production_lead' && associatedTeams.length > 0) {
-      return allProd.filter((tp) =>
-        associatedTeams.some(
+    const candidateTeams = teams.filter((t) => {
+      if (t.teamType === 'scraping') return false;
+      if (currentUserRole === 'production_lead' && associatedTeams.length > 0) {
+        return associatedTeams.some(
           (at) =>
-            at.toLowerCase().includes('lawson') && tp.team.includes('Lawson') ||
-            at.toLowerCase().includes('dts') && tp.team.includes('DTS') ||
-            at.toLowerCase().includes('surya') && tp.team.includes('Surya') ||
-            at.toLowerCase().includes('altius') && tp.team.includes('Altius')
-        )
+            at.toLowerCase().includes(t.name.toLowerCase()) ||
+            t.name.toLowerCase().includes(at.toLowerCase())
+        );
+      }
+      return true;
+    });
+
+    return candidateTeams.map((t) => {
+      const teamTasks = scopedBaseTasks.filter(
+        (task) => task.productionTeam === t.name || task.assignedTeam === t.name
       );
-    }
-    return allProd;
-  }, [currentUserRole, associatedTeams]);
+      const teamCompleted = teamTasks.filter((task) => task.status === 'completed').length;
+      const rate = teamTasks.length > 0 ? Math.round((teamCompleted / teamTasks.length) * 100 * 10) / 10 : 100;
+      return {
+        team: t.name.replace(' Production Team', '').replace(' Automation Team', '').replace(' Enterprise Team', '').replace(' Team', ''),
+        productivity: rate,
+        tasks: teamTasks.length,
+      };
+    });
+  }, [teams, scopedBaseTasks, currentUserRole, associatedTeams]);
 
-  const statusDistributionData = [
-    { name: 'In Progress', value: inProgress || 4, color: '#3b82f6' },
-    { name: 'Awaiting QC', value: awaitingQC || 2, color: '#6366f1' },
-    { name: 'Rework', value: reworkRequired || 1, color: '#f59e0b' },
-    { name: 'Production', value: productionPending || 2, color: '#a855f7' },
-    { name: 'Completed', value: completedTasks || 6, color: '#10b981' },
-  ];
+  const statusDistributionData = useMemo(() => [
+    { name: 'In Progress', value: inProgress, color: '#3b82f6' },
+    { name: 'Awaiting QC', value: awaitingQC, color: '#6366f1' },
+    { name: 'Rework', value: reworkRequired, color: '#f59e0b' },
+    { name: 'Production', value: productionPending, color: '#a855f7' },
+    { name: 'Completed', value: completedTasks, color: '#10b981' },
+  ], [inProgress, awaitingQC, reworkRequired, productionPending, completedTasks]);
 
-  const qcApprovalRateData = [
-    { month: 'Jun', rate: 91.2 },
-    { month: 'Jul', rate: 93.5 },
-    { month: 'Aug', rate: 94.8 },
-    { month: 'Sep', rate: 96.2 },
-    { month: 'Oct', rate: 97.5 },
-    { month: 'Nov', rate: 98.4 },
-  ];
+  const totalDistribution = useMemo(
+    () => statusDistributionData.reduce((acc, curr) => acc + curr.value, 0),
+    [statusDistributionData]
+  );
 
-  const dailySkuProcessingData = [
-    { time: '08:00', processed: 4200, errors: 65 },
-    { time: '10:00', processed: 9400, errors: 120 },
-    { time: '12:00', processed: 18500, errors: 210 },
-    { time: '14:00', processed: 29000, errors: 180 },
-    { time: '16:00', processed: 41200, errors: 310 },
-    { time: '18:00', processed: 56800, errors: 290 },
-  ];
+  const qcApprovalRateData = useMemo(() => [
+    { month: 'Jun', rate: 100 },
+    { month: 'Jul', rate: 100 },
+    { month: 'Aug', rate: 100 },
+    { month: 'Sep', rate: 100 },
+    { month: 'Oct', rate: 100 },
+    { month: 'Nov', rate: 100 },
+  ], []);
+
+  const totalCompletedSkus = useMemo(
+    () => scopedBaseTasks.reduce((sum, t) => sum + (t.completedSkus || 0), 0),
+    [scopedBaseTasks]
+  );
+
+  const dailySkuProcessingData = useMemo(() => {
+    const timeSlots = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
+    return timeSlots.map((time, idx) => ({
+      time,
+      processed: totalCompletedSkus > 0 ? Math.round((totalCompletedSkus / timeSlots.length) * (idx + 1)) : 0,
+      errors: 0,
+    }));
+  }, [totalCompletedSkus]);
 
   // Filtering & Sorting
   const filteredTasks = useMemo(() => {
@@ -296,28 +311,28 @@ export const ManagerDashboardView: React.FC = () => {
         <StatCard
           label="Total Projects"
           value={totalProjects}
-          trend={{ value: '+12%', isPositive: true }}
+          trend={totalProjects > 0 ? { value: `${totalProjects} Portfolios`, isPositive: true } : { value: '0 Projects', isPositive: true }}
           icon={FolderKanban}
           iconColor="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-100 dark:border-indigo-900"
-          sparklineData={[38, 40, 42, 45, 46, 48]}
+          sparklineData={totalProjects > 0 ? [Math.max(1, totalProjects - 2), totalProjects] : [0, 0, 0, 0, 0]}
           onClick={() => setCurrentView('projects')}
         />
         <StatCard
           label="Active Tasks"
           value={activeTasks}
-          trend={{ value: '+8%', isPositive: true }}
+          trend={activeTasks > 0 ? { value: `${activeTasks} Live`, isPositive: true } : { value: '0 Active', isPositive: true }}
           icon={ListTodo}
           iconColor="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-100 dark:border-blue-900"
-          sparklineData={[110, 115, 118, 120, 122, 124]}
+          sparklineData={activeTasks > 0 ? [Math.max(0, activeTasks - 2), activeTasks] : [0, 0, 0, 0, 0]}
           onClick={() => setCurrentView('all-tasks')}
         />
         <StatCard
           label="Pending Assignment"
           value={pendingAssignment}
-          trend={{ value: '-3%', isPositive: true }}
+          trend={pendingAssignment > 0 ? { value: `${pendingAssignment} Queued`, isPositive: false } : { value: '0 Queued', isPositive: true }}
           icon={Clock}
           iconColor="text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700"
-          sparklineData={[22, 20, 19, 21, 18]}
+          sparklineData={pendingAssignment > 0 ? [pendingAssignment, pendingAssignment] : [0, 0, 0, 0, 0]}
           onClick={() => {
             setStatusFilter('pending_assignment');
           }}
@@ -325,10 +340,10 @@ export const ManagerDashboardView: React.FC = () => {
         <StatCard
           label="In Progress"
           value={inProgress}
-          trend={{ value: '+14%', isPositive: true }}
+          trend={inProgress > 0 ? { value: `${inProgress} Scraping`, isPositive: true } : { value: '0 Scraping', isPositive: true }}
           icon={PlayCircle}
           iconColor="text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/60 border-cyan-100 dark:border-cyan-900"
-          sparklineData={[54, 58, 62, 65, 68]}
+          sparklineData={inProgress > 0 ? [inProgress, inProgress] : [0, 0, 0, 0, 0]}
           onClick={() => {
             setStatusFilter('in_progress');
           }}
@@ -336,38 +351,38 @@ export const ManagerDashboardView: React.FC = () => {
         <StatCard
           label="Awaiting Manager QC"
           value={awaitingQC}
-          trend={{ value: '+5%', isPositive: false }}
+          trend={awaitingQC > 0 ? { value: `${awaitingQC} Review`, isPositive: false } : { value: '0 Review', isPositive: true }}
           icon={ShieldAlert}
           iconColor="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-100 dark:border-indigo-900"
-          sparklineData={[10, 12, 11, 14, 15]}
+          sparklineData={awaitingQC > 0 ? [awaitingQC, awaitingQC] : [0, 0, 0, 0, 0]}
           active={awaitingQC > 0}
           onClick={() => setCurrentView('manager-qc')}
         />
         <StatCard
           label="Rework Required"
           value={reworkRequired}
-          trend={{ value: '-18%', isPositive: true }}
+          trend={reworkRequired > 0 ? { value: `${reworkRequired} Action`, isPositive: false } : { value: '0 Rework', isPositive: true }}
           icon={RotateCcw}
           iconColor="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border-amber-100 dark:border-amber-900"
-          sparklineData={[12, 10, 9, 8, 7]}
+          sparklineData={reworkRequired > 0 ? [reworkRequired, reworkRequired] : [0, 0, 0, 0, 0]}
           onClick={() => setCurrentView('rework-queue')}
         />
         <StatCard
           label="Production Pending"
           value={productionPending}
-          trend={{ value: '+2%', isPositive: true }}
+          trend={productionPending > 0 ? { value: `${productionPending} Staged`, isPositive: true } : { value: '0 Staged', isPositive: true }}
           icon={Factory}
           iconColor="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 border-purple-100 dark:border-purple-900"
-          sparklineData={[6, 7, 8, 8, 9]}
+          sparklineData={productionPending > 0 ? [productionPending, productionPending] : [0, 0, 0, 0, 0]}
           onClick={() => setCurrentView('production-qc')}
         />
         <StatCard
           label="Completed Tasks"
-          value={1842}
-          trend={{ value: '+24%', isPositive: true }}
+          value={completedTasks}
+          trend={completedTasks > 0 ? { value: `${completedTasks} Finished`, isPositive: true } : { value: '0 Completed', isPositive: true }}
           icon={CheckCircle2}
           iconColor="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-100 dark:border-emerald-900"
-          sparklineData={[1450, 1550, 1680, 1750, 1842]}
+          sparklineData={completedTasks > 0 ? [Math.max(0, completedTasks - 2), completedTasks] : [0, 0, 0, 0, 0]}
           onClick={() => {
             setStatusFilter('completed');
           }}
@@ -388,7 +403,7 @@ export const ManagerDashboardView: React.FC = () => {
               </p>
             </div>
             <span className="text-xs font-mono font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-              +18.4% On Pace
+              {completedTasks > 0 ? `${completedTasks} Completed` : 'Sprint Ready'}
             </span>
           </div>
 
@@ -453,32 +468,42 @@ export const ManagerDashboardView: React.FC = () => {
           </div>
 
           <div className="h-56 w-full flex items-center justify-center my-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={statusDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {statusDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    borderRadius: '8px',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '11px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {totalDistribution > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {statusDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      borderRadius: '8px',
+                      border: 'none',
+                      color: '#fff',
+                      fontSize: '11px',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-4">
+                <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 dark:border-zinc-700 flex items-center justify-center mb-2">
+                  <ListTodo className="w-5 h-5 text-slate-400" />
+                </div>
+                <p className="text-xs font-semibold text-slate-600 dark:text-zinc-300">Pipeline Idle</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">No tasks currently queued in pipeline</p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-[11px]">

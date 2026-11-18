@@ -41,8 +41,12 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ projectI
 
   if (!project) return null;
 
-  const projectTasks = tasks.filter((t) => t.projectId === project.id);
-  const percentCompleted = Math.round((project.completedTasks / Math.max(1, project.totalTasks)) * 100);
+  const projectTasks = tasks.filter((t) => t.projectId === project.id || t.projectName === project.name);
+  const totalTasks = projectTasks.length > 0 ? projectTasks.length : project.totalTasks;
+  const completedTasks = projectTasks.length > 0
+    ? projectTasks.filter((t) => t.status === 'completed').length
+    : project.completedTasks;
+  const percentCompleted = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
     <div 
@@ -117,7 +121,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ projectI
                 {percentCompleted}%
               </div>
               <span className="text-[10px] text-slate-400">
-                {project.completedTasks} / {project.totalTasks} Tasks Done
+                {completedTasks} / {totalTasks} Tasks Done
               </span>
             </div>
 
