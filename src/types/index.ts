@@ -136,14 +136,14 @@ export interface ProjectHistoryEvent {
 export interface Project {
   id: string;
   name: string;
-  client: string;
-  website: string;
+  client?: string;
+  website?: string;
   totalTasks: number;
   completedTasks: number;
   activeSkus: number;
   status: 'active' | 'in_review' | 'completed' | 'on_hold';
   teamLead: string;
-  deadline: string;
+  deadline?: string;
   health: 'healthy' | 'at_risk' | 'delayed';
   contributors?: ProjectContributor[];
   history?: ProjectHistoryEvent[];

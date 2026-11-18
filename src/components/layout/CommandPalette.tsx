@@ -121,7 +121,8 @@ export const CommandPalette: React.FC = () => {
   const filteredProjects = projects.filter(
     (p) =>
       p.name.toLowerCase().includes(query.toLowerCase()) ||
-      p.website.toLowerCase().includes(query.toLowerCase())
+      (p.website && p.website.toLowerCase().includes(query.toLowerCase())) ||
+      (p.client && p.client.toLowerCase().includes(query.toLowerCase()))
   );
 
   return (

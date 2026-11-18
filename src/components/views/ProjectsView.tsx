@@ -51,25 +51,17 @@ export const ProjectsView: React.FC = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
 
-  // Create Form State
+  // Create Form State (Streamlined: only Name, Lead, Health, Description, GDrive URL)
   const [newName, setNewName] = useState('');
-  const [newClient, setNewClient] = useState('');
-  const [newWebsite, setNewWebsite] = useState('');
   const [newTeamLead, setNewTeamLead] = useState('');
   const [newHealth, setNewHealth] = useState<'healthy' | 'at_risk' | 'delayed'>('healthy');
-  const [newDeadline, setNewDeadline] = useState('2026-12-31');
-  const [newActiveSkus, setNewActiveSkus] = useState<number>(10000);
   const [newDescription, setNewDescription] = useState('');
   const [newGdriveUrl, setNewGdriveUrl] = useState('');
 
   // Edit Form State
   const [editName, setEditName] = useState('');
-  const [editClient, setEditClient] = useState('');
-  const [editWebsite, setEditWebsite] = useState('');
   const [editTeamLead, setEditTeamLead] = useState('');
   const [editHealth, setEditHealth] = useState<'healthy' | 'at_risk' | 'delayed'>('healthy');
-  const [editDeadline, setEditDeadline] = useState('');
-  const [editActiveSkus, setEditActiveSkus] = useState<number>(0);
   const [editDescription, setEditDescription] = useState('');
   const [editGdriveUrl, setEditGdriveUrl] = useState('');
 
@@ -101,8 +93,8 @@ export const ProjectsView: React.FC = () => {
   const filteredProjects = projects.filter((p) => {
     const matchSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.website.toLowerCase().includes(search.toLowerCase()) ||
-      p.client.toLowerCase().includes(search.toLowerCase()) ||
+      (p.website && p.website.toLowerCase().includes(search.toLowerCase())) ||
+      (p.client && p.client.toLowerCase().includes(search.toLowerCase())) ||
       p.teamLead.toLowerCase().includes(search.toLowerCase());
 
     if (!matchSearch) return false;
@@ -125,12 +117,8 @@ export const ProjectsView: React.FC = () => {
 
   const handleOpenCreateModal = () => {
     setNewName('');
-    setNewClient('');
-    setNewWebsite('');
     setNewTeamLead(currentEmployee.name || employees[0]?.name || 'Samuel P');
     setNewHealth('healthy');
-    setNewDeadline('2026-12-31');
-    setNewActiveSkus(25000);
     setNewDescription('');
     setNewGdriveUrl('');
     setShowCreateModal(true);
@@ -138,16 +126,16 @@ export const ProjectsView: React.FC = () => {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim() || !newClient.trim() || !newWebsite.trim()) return;
+    if (!newName.trim()) return;
 
     addProject({
       name: newName.trim(),
-      client: newClient.trim(),
-      website: newWebsite.trim(),
+      client: '',
+      website: '',
       teamLead: newTeamLead || currentEmployee.name,
       health: newHealth,
-      deadline: newDeadline || '2026-12-31',
-      activeSkus: Number(newActiveSkus) || 0,
+      deadline: 'Ongoing',
+      activeSkus: 0,
       description: newDescription.trim() || undefined,
       gdriveUrl: newGdriveUrl.trim() || undefined,
     });
@@ -158,28 +146,20 @@ export const ProjectsView: React.FC = () => {
   const handleOpenEditModal = (proj: Project) => {
     setEditingProject(proj);
     setEditName(proj.name);
-    setEditClient(proj.client);
-    setEditWebsite(proj.website);
     setEditTeamLead(proj.teamLead);
     setEditHealth(proj.health);
-    setEditDeadline(proj.deadline);
-    setEditActiveSkus(proj.activeSkus);
     setEditDescription(proj.description || '');
     setEditGdriveUrl(proj.gdriveUrl || '');
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProject || !editName.trim() || !editClient.trim() || !editWebsite.trim()) return;
+    if (!editingProject || !editName.trim()) return;
 
     updateProject(editingProject.id, {
       name: editName.trim(),
-      client: editClient.trim(),
-      website: editWebsite.trim(),
       teamLead: editTeamLead,
       health: editHealth,
-      deadline: editDeadline,
-      activeSkus: Number(editActiveSkus) || 0,
       description: editDescription.trim() || undefined,
       gdriveUrl: editGdriveUrl.trim() || undefined,
     });
@@ -309,9 +289,6 @@ export const ProjectsView: React.FC = () => {
             const completedTasks = projectTasks.length > 0
               ? projectTasks.filter((t) => t.status === 'completed').length
               : proj.completedTasks;
-            const activeSkus = projectTasks.length > 0
-              ? projectTasks.reduce((acc, t) => acc + (t.skuCount || 0), 0)
-              : proj.activeSkus;
             const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
             return (
@@ -326,9 +303,11 @@ export const ProjectsView: React.FC = () => {
                       <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {proj.name}
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                        Client: <strong className="font-semibold text-slate-700 dark:text-zinc-300">{proj.client}</strong>
-                      </p>
+                      {proj.client ? (
+                        <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                          Client: <strong className="font-semibold text-slate-700 dark:text-zinc-300">{proj.client}</strong>
+                        </p>
+                      ) : null}
                     </div>
 
                     {/* Action buttons (Edit & Delete) */}
@@ -382,24 +361,30 @@ export const ProjectsView: React.FC = () => {
                       </span>
                     )}
 
-                    <span className="text-[10px] text-slate-400 font-mono ml-auto">
-                      Due: {proj.deadline}
-                    </span>
+                    {proj.deadline && proj.deadline !== 'Ongoing' && (
+                      <span className="text-[10px] text-slate-400 font-mono ml-auto">
+                        Due: {proj.deadline}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 mt-3 text-xs">
-                    <a
-                      href={`https://${proj.website}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="font-mono text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
-                    >
-                      <span>{proj.website}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                    <span className="text-slate-300 dark:text-zinc-700">•</span>
-                    <span className="text-slate-500 text-[11px]">Lead: {proj.teamLead}</span>
+                    {proj.website ? (
+                      <>
+                        <a
+                          href={proj.website.startsWith('http') ? proj.website : `https://${proj.website}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-mono text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>{proj.website}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        <span className="text-slate-300 dark:text-zinc-700">•</span>
+                      </>
+                    ) : null}
+                    <span className="text-slate-500 text-[11px]">Lead: <strong>{proj.teamLead}</strong></span>
                   </div>
 
                   {proj.description && (
@@ -410,9 +395,9 @@ export const ProjectsView: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-2 mt-4 p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900/60 border border-border text-center text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-400 block font-medium">Target SKUs</span>
+                      <span className="text-[10px] text-slate-400 block font-medium">Total Tasks</span>
                       <span className="font-mono font-bold text-slate-900 dark:text-zinc-100">
-                        {activeSkus.toLocaleString()}
+                        {totalTasks}
                       </span>
                     </div>
                     <div>
@@ -473,20 +458,20 @@ export const ProjectsView: React.FC = () => {
         </div>
       )}
 
-      {/* CREATE NEW PROJECT MODAL */}
+      {/* CREATE NEW PROJECT MODAL (STREAMLINED: NO Client, Website, Deadline, or SKU fields) */}
       {showCreateModal && (
         <div
           onClick={(e) => e.target === e.currentTarget && setShowCreateModal(false)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
         >
-          <div className="w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl p-6 space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-md bg-card rounded-2xl border border-border shadow-2xl p-6 space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
                   <Building2 className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-                  Create New Client Project Portfolio
+                  Create New Project
                 </h3>
               </div>
               <button
@@ -505,41 +490,12 @@ export const ProjectsView: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Grainger US Catalog Refresh"
+                  autoFocus
+                  placeholder="e.g. USCM or Grainger US Catalog Refresh"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200"
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Client Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Apex Industrial Supplies"
-                    value={newClient}
-                    onChange={(e) => setNewClient(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Target Website / Domain *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. grainger.com"
-                    value={newWebsite}
-                    onChange={(e) => setNewWebsite(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200 font-mono"
-                  />
-                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -576,34 +532,6 @@ export const ProjectsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Target Deadline
-                  </label>
-                  <input
-                    type="date"
-                    value={newDeadline}
-                    onChange={(e) => setNewDeadline(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Target SKU Volume
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1000}
-                    value={newActiveSkus}
-                    onChange={(e) => setNewActiveSkus(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200 font-mono"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
                   Google Drive Folder Storage URL (Optional)
@@ -619,11 +547,11 @@ export const ProjectsView: React.FC = () => {
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                  Project Description & Requirements
+                  Project Description & Requirements (Optional)
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="Outline the catalog extraction scope, required schema columns, image requirements, and turnaround target..."
+                  placeholder="Brief description of project requirements, guidelines, or operational notes..."
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200 leading-relaxed"
@@ -651,13 +579,13 @@ export const ProjectsView: React.FC = () => {
         </div>
       )}
 
-      {/* EDIT PROJECT MODAL */}
+      {/* EDIT PROJECT MODAL (STREAMLINED) */}
       {editingProject && (
         <div
           onClick={(e) => e.target === e.currentTarget && setEditingProject(null)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
         >
-          <div className="w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl p-6 space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-md bg-card rounded-2xl border border-border shadow-2xl p-6 space-y-4 animate-scale-up max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
@@ -665,7 +593,7 @@ export const ProjectsView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-                    Edit Project Portfolio
+                    Edit Project
                   </h3>
                   <span className="font-mono text-[10px] text-slate-400">ID: {editingProject.id}</span>
                 </div>
@@ -690,34 +618,6 @@ export const ProjectsView: React.FC = () => {
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200"
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Client Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editClient}
-                    onChange={(e) => setEditClient(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Target Website / Domain *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editWebsite}
-                    onChange={(e) => setEditWebsite(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200 font-mono"
-                  />
-                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -754,37 +654,9 @@ export const ProjectsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Target Deadline
-                  </label>
-                  <input
-                    type="date"
-                    value={editDeadline}
-                    onChange={(e) => setEditDeadline(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                    Target SKU Volume
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1000}
-                    value={editActiveSkus}
-                    onChange={(e) => setEditActiveSkus(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-slate-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-zinc-200 font-mono"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                  Google Drive Folder Storage URL
+                  Google Drive Folder Storage URL (Optional)
                 </label>
                 <input
                   type="url"
@@ -797,7 +669,7 @@ export const ProjectsView: React.FC = () => {
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 block">
-                  Project Description & Requirements
+                  Project Description & Requirements (Optional)
                 </label>
                 <textarea
                   rows={3}
@@ -853,9 +725,11 @@ export const ProjectsView: React.FC = () => {
               <p className="font-semibold text-slate-800 dark:text-zinc-200">
                 {deletingProject.name}
               </p>
-              <p className="text-slate-500 text-[11px]">
-                Client: {deletingProject.client} • Website: {deletingProject.website}
-              </p>
+              {deletingProject.client ? (
+                <p className="text-slate-500 text-[11px]">
+                  Client: {deletingProject.client}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">

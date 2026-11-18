@@ -352,15 +352,15 @@ export const TaskAssignmentModal: React.FC = () => {
                         setSelectedProjectId(e.target.value);
                         const p = projects.find((proj) => proj.id === e.target.value);
                         if (p) {
-                          setClient(p.client);
-                          setWebsite(p.website);
+                          setClient(p.client || '');
+                          setWebsite(p.website || '');
                         }
                       }}
                       className="w-full px-3 py-2 rounded-lg border border-border bg-card text-xs text-slate-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-indigo-500"
                     >
                       {projects.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} ({p.website})
+                          {p.name} {p.website ? `(${p.website})` : ''}
                         </option>
                       ))}
                     </select>

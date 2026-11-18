@@ -982,20 +982,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addProject = (projectData: Partial<Project>): Project => {
     const newId = `proj-${Date.now()}`;
-    const cleanWebsite = (projectData.website || 'example.com').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    const cleanWebsite = projectData.website
+      ? projectData.website.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '')
+      : '';
     const newProject: Project = {
       id: newId,
-      name: projectData.name?.trim() || 'New Client Extraction Portfolio',
-      client: projectData.client?.trim() || 'Enterprise Client',
+      name: projectData.name?.trim() || 'New Extraction Project',
+      client: projectData.client?.trim() || '',
       website: cleanWebsite,
       totalTasks: 0,
       completedTasks: 0,
       activeSkus: projectData.activeSkus || 0,
       status: projectData.status || 'active',
       teamLead: projectData.teamLead || currentEmployee.name || 'Samuel P',
-      deadline: projectData.deadline || '2026-12-31',
+      deadline: projectData.deadline || 'Ongoing',
       health: projectData.health || 'healthy',
-      description: projectData.description?.trim() || 'Custom web extraction portfolio covering structured catalog specifications, live pricing, and asset synchronization.',
+      description: projectData.description?.trim() || '',
       gdriveUrl: projectData.gdriveUrl || `https://drive.google.com/drive/folders/vserve-${newId}`,
       contributors: [],
       history: [
@@ -1003,7 +1005,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: `hist-${Date.now()}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           actor: currentEmployee.name,
-          action: `Initialized project portfolio: "${projectData.name || newId}"`,
+          action: `Initialized project: "${projectData.name || newId}"`,
           type: 'milestone',
         },
       ],
@@ -1013,7 +1015,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       category: 'system',
       actor: currentEmployee.name,
       actorRole: currentEmployee.role,
-      action: `Created client project: "${newProject.name}" for client "${newProject.client}".`,
+      action: `Created project: "${newProject.name}".`,
     });
     return newProject;
   };
