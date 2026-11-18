@@ -133,7 +133,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : false;
   });
 
-  const [selectedTaskIdForQC, setSelectedTaskIdForQC] = useState<string | null>('TSK-1048');
+  const [selectedTaskIdForQC, setSelectedTaskIdForQC] = useState<string | null>(null);
   const [inspectedTaskId, setInspectedTaskId] = useState<string | null>(null);
   const [inspectedProjectId, setInspectedProjectId] = useState<string | null>(null);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState<boolean>(false);

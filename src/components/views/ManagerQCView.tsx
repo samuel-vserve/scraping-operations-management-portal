@@ -38,12 +38,20 @@ export const ManagerQCView: React.FC<ManagerQCViewProps> = ({ mode = 'all' }) =>
     setCurrentView,
   } = useApp();
 
+  // Filter eligible tasks for the mode
+  const eligibleTasks = tasks.filter((t) =>
+    mode === 'rework'
+      ? t.status === 'rework_required'
+      : t.status === 'awaiting_manager_qc' || t.status === 'in_progress'
+  );
+
   // Find active task or default to first awaiting QC or rework
   const currentTask =
-    tasks.find((t) => t.id === selectedTaskIdForQC) ||
-    (mode === 'rework'
-      ? tasks.find((t) => t.status === 'rework_required') || tasks[0]
-      : tasks.find((t) => t.status === 'awaiting_manager_qc') || tasks[0]);
+    (selectedTaskIdForQC
+      ? tasks.find((t) => t.id === selectedTaskIdForQC && (mode === 'rework' ? t.status === 'rework_required' : true))
+      : null) ||
+    eligibleTasks[0] ||
+    null;
 
   const [remarks, setRemarks] = useState<string>('');
   const [filterMissingField, setFilterMissingField] = useState<string | null>(null);
@@ -98,6 +106,88 @@ export const ManagerQCView: React.FC<ManagerQCViewProps> = ({ mode = 'all' }) =>
     setRemarks('');
   };
 
+  // Safe empty state when no tasks exist in queue
+  if (!currentTask) {
+    return (
+      <div className="space-y-6 pb-12 animate-fade-in">
+        {/* Top Banner */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-5 rounded-2xl border border-border bg-card shadow-subtle">
+          <div className="flex items-center gap-3">
+            <div
+              className={`p-2.5 rounded-xl border ${
+                mode === 'rework'
+                  ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                  : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'
+              }`}
+            >
+              {mode === 'rework' ? <RotateCcw className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                  {mode === 'rework' ? 'Rework Queue & Correction Workspace' : 'Manager Approval Workspace'}
+                </h1>
+                <span
+                  className={`font-mono text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+                    mode === 'rework'
+                      ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                      : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                  }`}
+                >
+                  0 Tasks in Queue
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                {mode === 'rework'
+                  ? 'Track datasets rejected during quality inspection that require attribute correction or re-scraping.'
+                  : 'Audit scraped datasets, inspect attribute fill rates, and execute Manager Approval sign-off.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Empty State Card */}
+        <div className="p-12 rounded-3xl border border-dashed border-border bg-card text-center space-y-4 shadow-subtle max-w-2xl mx-auto my-8">
+          <div
+            className={`w-14 h-14 rounded-2xl mx-auto flex items-center justify-center border shadow-xs ${
+              mode === 'rework'
+                ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+            }`}
+          >
+            {mode === 'rework' ? <RotateCcw className="w-7 h-7" /> : <CheckCircle2 className="w-7 h-7" />}
+          </div>
+
+          <div className="space-y-1.5">
+            <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+              {mode === 'rework' ? 'No Tasks in Rework Queue' : 'No Tasks Awaiting Manager QC'}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-md mx-auto">
+              {mode === 'rework'
+                ? 'All extracted datasets have passed quality verification without rework flags. When tasks fail QC or require re-scraping, they will appear here.'
+                : 'The manager approval queue is clear. When scraping engineers submit extracted batches, they will appear here for verification.'}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setCurrentView('all-tasks')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
+            >
+              <span>View All Tasks Pipeline</span>
+            </button>
+            <button
+              onClick={() => setCurrentView('overview')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 text-xs font-semibold transition-colors"
+            >
+              <span>Return to Dashboard</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 pb-12 animate-fade-in">
       {/* Top Banner: Task Switcher & Header */}
@@ -138,11 +228,17 @@ export const ManagerQCView: React.FC<ManagerQCViewProps> = ({ mode = 'all' }) =>
             }}
             className="px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-semibold text-slate-800 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
           >
-            {tasks.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.id} - {t.projectName} ({t.status.replace('_', ' ')})
+            {eligibleTasks.length > 0 ? (
+              eligibleTasks.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.id} - {t.projectName} ({t.status.replace('_', ' ')})
+                </option>
+              ))
+            ) : (
+              <option value={currentTask.id}>
+                {currentTask.id} - {currentTask.projectName}
               </option>
-            ))}
+            )}
           </select>
         </div>
       </div>
